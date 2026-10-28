@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>CarXModManager</AssemblyName>
+    <Version>0.1.0</Version>
+    <RootNamespace>CarXModManager</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <NoWarn>$(NoWarn);NU1603</NoWarn>
+    <GameDirectory Condition="'$(GameDirectory)' == ''">D:/SteamLibrary/steamapps/common/CarX Drift Racing Online 2</GameDirectory>
+    <GameInteropDirectory Condition="'$(GameInteropDirectory)' == ''">$(GameDirectory)/BepInEx/interop</GameInteropDirectory>
+    <BepInExCoreDirectory Condition="'$(BepInExCoreDirectory)' == ''">$(GameDirectory)/BepInEx/core</BepInExCoreDirectory>
+    <!-- UseBepInExPackages=true: take BepInEx/Harmony/Il2CppInterop from NuGet instead of the game's BepInEx/core folder. -->
+    <UseBepInExPackages Condition="'$(UseBepInExPackages)' == ''">false</UseBepInExPackages>
+    <DeployToGame Condition="'$(DeployToGame)' == '' And '$(UseBepInExPackages)' != 'true'">true</DeployToGame>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UseBepInExPackages)' != 'true'">
+    <Reference Include="$(BepInExCoreDirectory)/*.dll" Private="false" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(UseBepInExPackages)' == 'true'">
+    <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.791" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="$(GameInteropDirectory)/*.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckInterop" BeforeTargets="ResolveReferences" Condition="'$(UseBepInExPackages)' != 'true'">
+    <Error Condition="!Exists('$(GameInteropDirectory)/Framework.Views.Cars.dll')" Text="Run the game with BepInEx once to generate interop, or set GameDirectory/GameInteropDirectory." />
+  </Target>
+  <!-- Copies the built DLL to BepInEx/plugins/CarXModManager. Skipped when the game folder is missing; ignored if the game has the file locked. -->
+  <Target Name="DeployToGameFolder" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true' And Exists('$(GameDirectory)/BepInEx/plugins')">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDirectory)/BepInEx/plugins/CarXModManager" ContinueOnError="true" />
+  </Target>
+</Project>
