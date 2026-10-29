@@ -1,10 +1,15 @@
-# CarX Mod Manager (dev builds)
+# Compatibility layer (dev builds)
 
 A BepInEx 6 IL2CPP plugin for **CarX Drift Racing Online 2** (Unity 6000.3, BepInEx 6.0.0-be.791). Versions are
-not bumped for dev builds; the title in the log and the release notes carry the commit hash instead.
+not bumped for dev builds; the log and the release notes carry the commit hash (the "build id") instead.
 
-An in-game menu is planned. For now the plugin does one thing: it draws a single line in the **bottom-left corner
-of the screen**, always on:
+Other mods build on it: the shared API (`GameHooks.Create`) is documented in [API.md](API.md). This page covers what
+the plugin does by itself, how to build it, and how to check it works.
+
+## The status line
+
+An in-game menu is planned. For now the plugin draws a single line in the **bottom-left corner of the screen**,
+always on:
 
 ```
 4 mods loaded
@@ -12,41 +17,40 @@ of the screen**, always on:
 3 mods loaded, 1 failed to load     <- "1 failed to load" in red
 ```
 
-- **Loaded** is every BepInEx plugin that started, not counting the manager itself.
+- **Loaded** is every BepInEx plugin that started, not counting the layer itself.
 - **With errors** is a loaded mod that has logged an *Error* or *Fatal* line under its own log source (its plugin
-  name). Warnings do not count, and errors logged under some other source name cannot be tied to a mod.
+  name). Warnings do not count, and errors logged under some other source name cannot be tied to a mod. How a mod
+  should log is in [API.md](API.md#logging-conventions).
 - **Failed to load** is a mod BepInEx logged `Error loading [X]` or `Could not load [X]` for.
-- Mods that loaded before the manager are picked up by reading `BepInEx/LogOutput.log` once at startup, so keep
+- Mods that loaded before the layer are picked up by reading `BepInEx/LogOutput.log` once at startup, so keep
   BepInEx's disk log enabled (it is by default).
 - Turn the line off with `ShowStatusLine = false` in `BepInEx/config/carx.modmanager.cfg`.
 
 It is drawn with Unity's IMGUI inside the engine, so it works on DX11 and DX12 alike and sits under ReShade
 instead of hooking `Present`.
 
-## Shared API for other mods (`CarXModManager.Api`)
+## Source layout
 
-Other mods reference `CarXModManager.dll` and declare `[BepInDependency("carx.modmanager")]`. Game-wide helpers live
-here so each mod doesn't re-implement them:
-
-- `GameHooks.Create(harmony, log, typeName, assemblyName, methodName, parameterCheck, prefix, postfix)` creates a
-  hook on a game method found by name at run time (no compile-time dependency on the game's types). Every failure (type
-  renamed, method changed, hook refused) is logged as an **Error under the calling mod's own log source**, so the
-  mod shows up in the status line as "with errors" and a game update that moves a method is visible at once.
-
-  A prefix hooked this way runs synchronously, before the game uses the arguments, so a mod can swap an argument
-  (for example a texture) with no frame in which the original shows. The type is looked up in the named interop
-  assembly first, so a hook is created as soon as the plugin loads rather than after the game has used the method.
+| Path | What it is |
+|---|---|
+| `src/Plugin.cs` | The BepInEx plugin: GUID, name, version, build id, the `ShowStatusLine` setting. |
+| `src/Api/GameHooks.cs` | The public API for other mods. |
+| `src/StatusLine/ModStatusTracker.cs` | Listens to the BepInEx log and works out the text of the line. |
+| `src/StatusLine/StatusLine.cs` | Draws the line (position, scale, drop shadow); disables itself after repeated drawing errors. |
+| `src/StatusLine/StatusLineBehaviour.cs` | The one injected Unity component whose `OnGUI` calls `StatusLine.Draw`. |
+| `src/StatusLine/Imgui.cs` | The few IMGUI calls the line uses, each guarded against being stripped from the game build. |
+| `ci/UnityStubs/` | Stand-ins for Unity's assemblies, used only by CI to compile (see below). |
 
 ## Download
 
 Every push to `main` builds the plugin on GitHub Actions and republishes the **0.1-alpha** pre-release in this repo's
-Releases (a zip only). Extract `CarXModManager.zip` into `BepInEx/plugins`; it holds
-the `CarXModManager` folder.
+Releases (a zip only). Extract `CarXModManager.zip` into `BepInEx/plugins`; it holds the `CarXModManager` folder
+with `CarXModManager.dll` and `CarXModManager.xml` (the API's IntelliSense documentation, for mod authors).
 
 CI has no access to the game's interop assemblies, so it compiles against stand-ins in `ci/UnityStubs/` with the
 same assembly names and member shapes; the DLL binds to the real ones when the game loads it. The stand-ins are
-written from knowledge of Unity's API, so a wrong signature shows up as a `MissingMethodException` /
-`CARXMM_FAULT` line in `LogOutput.log`, not as a build error.
+written from knowledge of Unity's API, so a wrong signature shows up as a `MissingMethodException` or a
+`STATUSLINE_DRAW_ERROR` line in `LogOutput.log`, not as a build error.
 
 ## Build yourself
 
@@ -54,9 +58,9 @@ written from knowledge of Unity's API, so a wrong signature shows up as a `Missi
 dotnet build -c Release
 ```
 
-Defaults match the Ferrari 458 project: the game is expected at
-`D:/SteamLibrary/steamapps/common/CarX Drift Racing Online 2`. Override with `-p:GameDirectory="..."`. The build
-copies `CarXModManager.dll` to `BepInEx/plugins/CarXModManager/` (`-p:DeployToGame=false` to skip).
+The game is expected at `D:/SteamLibrary/steamapps/common/CarX Drift Racing Online 2`. Override with
+`-p:GameDirectory="..."`. The build copies `CarXModManager.dll` to `BepInEx/plugins/CarXModManager/`
+(`-p:DeployToGame=false` to skip).
 
 To build somewhere without the game installed, take BepInEx from NuGet and point at a folder holding just the
 interop DLLs the plugin uses (`UnityEngine.CoreModule`, `UnityEngine.IMGUIModule`, copied from the game's
@@ -68,13 +72,14 @@ dotnet build -c Release -p:UseBepInExPackages=true -p:GameInteropDirectory=/path
 
 ## Checking it works
 
-After launching, `BepInEx/LogOutput.log` should contain:
+After launching, `BepInEx/LogOutput.log` should contain, under `[CarX Mod Manager]`:
 
-1. `CARXMM_LOADED` - the plugin loaded.
-2. `CARXMM_ONGUI_FIRED` - IMGUI runs on this Unity build; it also prints the graphics API in use.
+1. `COMPATLAYER_LOADED` - the plugin loaded (with the build id).
+2. `STATUSLINE_FIRST_DRAW` - IMGUI runs on this Unity build; it also prints the graphics API in use.
 
 and the line should be visible at the bottom-left. If IL2CPP stripped an IMGUI method the game build needs, you
-get `CARXMM_UI_UNAVAILABLE - <name>` instead.
+get `IMGUI_CALL_UNAVAILABLE - <name>` instead. All log codes the layer writes are listed in
+[API.md](API.md#log-codes-the-layer-writes).
 
 ## Notes
 

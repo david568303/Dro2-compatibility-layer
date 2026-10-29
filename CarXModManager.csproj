@@ -9,6 +9,8 @@
     <LangVersion>latest</LangVersion>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+    <!-- CarXModManager.xml next to the DLL gives other mods' authors IntelliSense for the public API. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);NU1603</NoWarn>
     <!-- ci/ holds the CI-only Unity stand-ins; out/ is build output. Neither belongs in the plugin. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);ci/**;out/**</DefaultItemExcludes>

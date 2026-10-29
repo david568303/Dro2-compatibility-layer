@@ -36,7 +36,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p package/CarXModManager
-          cp out/CarXModManager.dll package/CarXModManager/
+          cp out/CarXModManager.dll out/CarXModManager.xml package/CarXModManager/
           (cd package && zip -r ../CarXModManager.zip CarXModManager)
 
       - uses: actions/upload-artifact@v4
@@ -53,4 +53,4 @@ jobs:
           gh release create 0.1-alpha CarXModManager.zip \
             --target "$GITHUB_SHA" --prerelease \
             --title "Compatibility Layer 0.1-alpha" \
-            --notes "Dev build from $GITHUB_SHA, not yet tested in-game. Extract CarXModManager.zip into BepInEx/plugins, launch, and look at the bottom-left corner of the screen. BepInEx/LogOutput.log should contain CARXMM_LOADED and CARXMM_ONGUI_FIRED."
+            --notes "Dev build from $GITHUB_SHA, not yet tested in-game. Extract CarXModManager.zip into BepInEx/plugins, launch, and look at the bottom-left corner of the screen. BepInEx/LogOutput.log should contain COMPATLAYER_LOADED and STATUSLINE_FIRST_DRAW."
