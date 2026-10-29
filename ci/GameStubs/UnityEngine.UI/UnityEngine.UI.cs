@@ -3,10 +3,21 @@
 
 namespace UnityEngine.EventSystems
 {
+    public class AbstractEventData : global::Il2CppSystem.Object
+    {
+        public AbstractEventData(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class BaseEventData : global::UnityEngine.EventSystems.AbstractEventData
+    {
+        public BaseEventData(System.IntPtr pointer) : base(pointer) { }
+    }
     public class EventSystem : global::UnityEngine.EventSystems.UIBehaviour
     {
         public EventSystem(System.IntPtr pointer) : base(pointer) { }
         public static global::UnityEngine.EventSystems.EventSystem current { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.GameObject currentSelectedGameObject { get { throw null!; } }
+        public void SetSelectedGameObject(global::UnityEngine.GameObject selected, global::UnityEngine.EventSystems.BaseEventData pointer) { throw null!; }
+        public void SetSelectedGameObject(global::UnityEngine.GameObject selected) { throw null!; }
     }
     public class UIBehaviour : global::UnityEngine.MonoBehaviour
     {

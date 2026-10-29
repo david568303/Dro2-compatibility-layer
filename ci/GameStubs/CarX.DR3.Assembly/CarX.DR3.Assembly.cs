@@ -77,6 +77,29 @@ namespace CarX.Game.DR3Console.DR3.Scripts.States.Contexts.Common
     }
 }
 
+namespace CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes
+{
+    public class UIRaceGameModeButton : global::UnityEngine.MonoBehaviour
+    {
+        public UIRaceGameModeButton(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Button m_button { get { throw null!; } set { throw null!; } }
+    }
+    public class UIRaceGameModesContext : global::CarX.Game.DR3Console.BaseContext
+    {
+        public UIRaceGameModesContext(System.IntPtr pointer) : base(pointer) { }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_careerButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_freerideButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_xdsTrainingButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_duelsButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_rtmpLobbyButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_mpDuelsButton { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_asyncTop32Button { get { throw null!; } set { throw null!; } }
+        public global::CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.GameModes.UIRaceGameModeButton m_rtmpTop32Button { get { throw null!; } set { throw null!; } }
+        public global::TMPro.TMP_Text m_headerText { get { throw null!; } set { throw null!; } }
+        public global::TMPro.TMP_Text m_modeDescriptionText { get { throw null!; } set { throw null!; } }
+    }
+}
+
 namespace CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.WorldMap.FreeRide
 {
     public class UICreateRTMPRoomContext : global::CarX.Game.DR3Console.DR3.Scripts.Base.UIBaseContext

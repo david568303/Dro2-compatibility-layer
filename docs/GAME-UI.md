@@ -43,8 +43,21 @@ From the layout the mod manager wrote (`carx.modmanager.ui-mainmenu.txt`), in th
   Info, Credits, Quit, OnlineMenu, Discord, Mods), `Animator`, `UIAnimateBySelect`, sounds, and children `Default` / `Selected` /
   `Pressed` (stacked images switched by bindings). The context also holds one `Button` field per entry except the server browser
   and Discord. The controller (`UIMainMenuContextController<T>`) reacts to `menuButtonPressedEvent(MenuItem)`.
-- Pressing Play opens the game modes screen (`UIRaceGameModesContext`, one `UIRaceGameModeButton` per mode: career, free ride, XDS
-  training, duels, the multiplayer lobby = server browser, multiplayer duels, top 32 variants). *Not touched by the mod manager.*
+- The globe tile (`OnlineMenu`) goes straight to the multiplayer lobby (`GarageMenuState.RTMPLobby`, the server browser). Pressing Play
+  opens the Play menu instead (below), whose multiplayer lobby tile leads to the same state, so the main menu offered the same
+  destination twice.
+
+## Play menu (game modes)
+
+- `UIRaceGameModesContext` (a `BaseContext` with `OnActivated` / `OnDeactivated`) holds one `UIRaceGameModeButton` field per mode:
+  `m_careerButton`, `m_freerideButton`, `m_xdsTrainingButton`, `m_duelsButton`, `m_rtmpLobbyButton` (the multiplayer lobby = server
+  browser), `m_mpDuelsButton`, `m_asyncTop32Button`, `m_rtmpTop32Button`; plus `m_headerText` and `m_modeDescriptionText` (the
+  description of the selected mode, shown on hover/selection).
+- A tile (`UIRaceGameModeButton`: `m_gameMode`, `m_button`, `m_hasNew`) raises `onSubmit` / `onSelect`; the view turns them into
+  `OnGameModeSubmitHandler` / `OnGameModeSelectHandler` and `onGameModeSelectedEvent(RaceGameMode)`. The controller
+  (`UIRaceGameModesContextController<T>`) maps each mode to a `GarageMenuState` (`m_modeToStateMap`), checks availability and locks
+  (`m_lockedModes`) and switches the garage state (`RTMPLobby`, `WorldMapFreeRide`, `WorldMapTop32`, ...). Multiplayer availability is
+  shown with `m_noMultiplayerIcon` (`SetMultiplayerAvailable`).
 
 ## Map selection
 

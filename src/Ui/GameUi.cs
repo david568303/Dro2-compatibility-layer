@@ -181,6 +181,19 @@ internal static class GameUi
         return look;
     }
 
+    /// <summary>
+    /// Copies the look of one of the game's texts (font, material, colour, size) so that texts the mod manager adds match it. Only the text
+    /// fields of the returned look are filled in.
+    /// </summary>
+    public static ButtonLook CaptureTextLook(TMP_Text text) => new()
+    {
+        Source = $"the '{text.gameObject.name}' text",
+        Font = text.font,
+        FontMaterial = text.fontSharedMaterial,
+        TextColor = text.color,
+        FontSize = text.enableAutoSizing ? text.fontSizeMax : text.fontSize,
+    };
+
     // ---- creating objects ---------------------------------------------------------------------------------------------------
 
     /// <summary>Creates an empty UI object (a <see cref="RectTransform"/>) as a child of <paramref name="parent"/>, on the parent's layer, at normal scale.</summary>

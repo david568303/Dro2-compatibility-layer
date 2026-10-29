@@ -254,6 +254,74 @@ Check(TextEditing.Backspace("abc") == "ab" && TextEditing.Backspace("") == "", "
     Check(PlayPairLayout.MoveWith(separator, play, plan.Play) == new Box(524f, -332f, 400f, 2f), "play pair: the underline keeps its place relative to Play when Play moves");
 }
 
+// ---- sections of tiles (the Play menu: single player and multiplayer) -----------------------------------------------------
+{
+    IReadOnlyList<int> single = new[] { 0, 1, 2, 3 }, multi = new[] { 4, 5, 6, 7 };
+    var sections = new[] { single, multi };
+    Box[] Tiles(float w, float h) => Enumerable.Range(0, 8).Select(i => new Box(i * 10f, 0f, w, h)).ToArray();
+    var original = new Box(-800f, -150f, 1600f, 300f);
+    var usable = new Box(-936f, -516f, 1872f, 1032f);
+
+    // narrow cards fit in one row at full size: sections in order, equal gaps inside a section, a wider gap between sections, titles above each section
+    SectionPlan line = SectionLayout.Plan(Tiles(200f, 300f), sections, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Auto);
+    Check(line.Fits && line.Mode == SectionMode.Line && line.Scale == 1f && line.Labels.Length == 2, "sections: eight narrow tiles fit one row at full size, with a title per section");
+    Check(Enumerable.Range(0, 7).All(i => line.Tiles[i].X < line.Tiles[i + 1].X), "sections: tiles read left to right in the order given");
+    Check(Math.Abs(line.Tiles[1].X - line.Tiles[0].Right - 16f) < 0.01f && Math.Abs(line.Tiles[4].X - line.Tiles[3].Right - 48f) < 0.01f, "sections: 16 units between tiles of a section, 48 between sections");
+    Check(line.Labels[0].X == line.Tiles[0].X && Math.Abs(line.Labels[0].Right - line.Tiles[3].Right) < 0.01f && line.Labels[1].X == line.Tiles[4].X, "sections: each title spans its own section");
+    Check(line.Labels[0].Y >= line.Tiles.Max(box => box.Top) && Math.Abs(line.Labels[0].Y - line.Labels[1].Y) < 0.01f, "sections: titles sit above the tiles, on one line");
+    Check(line.Tiles.All(box => usable.Contains(box)) && line.Labels.All(box => usable.Contains(box)), "sections: everything is inside the free area");
+    Box groupBox = MenuGroupBox(line);
+    Check(Math.Abs(groupBox.CenterX - original.CenterX) < 0.01f, "sections: the group is centred where the tiles were");
+
+    // wide cards do not fit one row: each section gets its own row
+    SectionPlan stacked = SectionLayout.Plan(Tiles(400f, 300f), sections, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Auto);
+    Check(stacked.Fits && stacked.Mode == SectionMode.Stacked && stacked.Scale == 1f, "sections: wide tiles go in one row per section");
+    Check(stacked.Tiles[0].Y > stacked.Tiles[4].Y && Math.Abs(stacked.Tiles[0].X - stacked.Tiles[4].X) < 0.01f && Math.Abs(stacked.Tiles[0].Y - stacked.Tiles[3].Y) < 0.01f,
+        "sections: the first section is above the second, rows start at the same left edge, tiles of a row share a line");
+    Check(stacked.Labels[0].Top > stacked.Tiles[0].Top && stacked.Labels[1].Top > stacked.Tiles[4].Top && stacked.Labels[1].Top <= stacked.Tiles[0].Y, "sections: each title is above its own row and below the row before it");
+
+    // too big for the area: shrunk uniformly, but never enlarged
+    SectionPlan shrunk = SectionLayout.Plan(Tiles(300f, 400f), sections, new Box(-936f, -300f, 1872f, 600f), original, 16f, 48f, 34f, 6f, true, SectionMode.Auto);
+    Check(shrunk.Fits && shrunk.Scale < 1f && Math.Abs(shrunk.Tiles[0].Width - 300f * shrunk.Scale) < 0.01f, "sections: tiles that do not fit are shrunk uniformly");
+    Check(SectionLayout.Plan(Tiles(100f, 100f), sections, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Auto).Scale == 1f, "sections: small tiles are never enlarged");
+    SectionPlan tiny = SectionLayout.Plan(Tiles(300f, 400f), sections, new Box(0f, 0f, 700f, 300f), original, 16f, 48f, 34f, 6f, true, SectionMode.Auto);
+    Check(!tiny.Fits && tiny.Detail.Contains("readable minimum"), "sections: a free area that would shrink the tiles below the readable minimum is refused");
+
+    // forced modes and no titles
+    Check(SectionLayout.Plan(Tiles(200f, 300f), sections, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Stacked).Mode == SectionMode.Stacked, "sections: a forced mode is used when it fits");
+    SectionPlan plain = SectionLayout.Plan(Tiles(200f, 300f), sections, usable, original, 16f, 48f, 34f, 6f, false, SectionMode.Line);
+    Check(plain.Fits && plain.Labels.Length == 0, "sections: with titles off there are none");
+    var oneEmpty = new[] { single, (IReadOnlyList<int>)Array.Empty<int>() };
+    SectionPlan onlyOne = SectionLayout.Plan(Tiles(200f, 300f).Take(4).ToArray(), oneEmpty, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Auto);
+    Check(onlyOne.Fits && onlyOne.Labels.Length == 1, "sections: an empty section is skipped, with no title");
+    Check(!SectionLayout.Plan(Tiles(200f, 300f), new[] { (IReadOnlyList<int>)Array.Empty<int>() }, usable, original, 16f, 48f, 34f, 6f, true, SectionMode.Auto).Fits, "sections: nothing to arrange is not a plan");
+
+    // the free area around the original tiles
+    var header = new Box(-900f, 420f, 600f, 60f);       // above
+    var description = new Box(-900f, -400f, 1000f, 80f); // below
+    Box? free = SectionLayout.FreeArea(usable, original, new[] { header, description }, 10f);
+    Check(free.HasValue && Math.Abs(free.Value.Top - 410f) < 0.01f && Math.Abs(free.Value.Y - (-310f)) < 0.01f && free.Value.X == usable.X && free.Value.Right == usable.Right,
+        "sections: a header above and a description below cut the free area, with room kept around them");
+    Box? beside = SectionLayout.FreeArea(usable, original, new[] { new Box(-936f, -100f, 100f, 200f) }, 10f);
+    Check(beside.HasValue && Math.Abs(beside.Value.X - (-826f)) < 0.01f, "sections: a panel at the left side cuts the free area from the left");
+    Check(SectionLayout.FreeArea(usable, original, new[] { new Box(0f, 0f, 100f, 50f) }, 10f) == null, "sections: an element inside the tiles' own region means they cannot be rearranged safely");
+    Box? whole = SectionLayout.FreeArea(usable, original, Array.Empty<Box>(), 10f);
+    Check(whole == usable, "sections: with nothing in the way the whole usable area is free");
+    Box? kept = SectionLayout.FreeArea(new Box(0f, 0f, 100f, 100f), new Box(-50f, -50f, 300f, 300f), Array.Empty<Box>(), 10f);
+    Check(kept.HasValue && kept.Value.Contains(new Box(-50f, -50f, 300f, 300f)), "sections: the free area always contains the tiles' original region");
+
+    static Box MenuGroupBox(SectionPlan plan)
+    {
+        IEnumerable<Box> all = plan.Tiles.Where(box => box.HasArea).Concat(plan.Labels);
+        return MenuUnion(all);
+    }
+    static Box MenuUnion(IEnumerable<Box> boxes)
+    {
+        float left = boxes.Min(b => b.X), bottom = boxes.Min(b => b.Y), right = boxes.Max(b => b.Right), top = boxes.Max(b => b.Top);
+        return new Box(left, bottom, right - left, top - bottom);
+    }
+}
+
 // ---- placement geometry ------------------------------------------------------------------------------------------------
 {
     var screen = new Box(0f, 0f, 1920f, 1080f);
