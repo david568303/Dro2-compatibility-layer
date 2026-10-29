@@ -44,12 +44,15 @@ jobs:
           name: CarXModManager
           path: CarXModManager.zip
 
-      - name: Publish rolling release
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --cleanup-tag --yes || true
-          gh release create latest CarXModManager.zip \
+          # Keep exactly one release: remove every existing one (and its tag), then publish 0.1-alpha.
+          for tag in $(gh release list --limit 100 --json tagName --jq '.[].tagName'); do
+            gh release delete "$tag" --cleanup-tag --yes
+          done
+          gh release create 0.1-alpha CarXModManager.zip \
             --target "$GITHUB_SHA" --prerelease \
-            --title "CarX Mod Manager (CI build, not yet tested in-game)" \
-            --notes "Dev build from $GITHUB_SHA, compiled against stand-in Unity assemblies, so the Unity-facing calls are unverified until it runs in the game. Extract CarXModManager.zip into the game folder (it contains BepInEx/plugins/CarXModManager/CarXModManager.dll), launch, and look at the bottom-left corner of the screen. BepInEx/LogOutput.log should contain CARXMM_LOADED and CARXMM_ONGUI_FIRED."
+            --title "Compatibility Layer 0.1-alpha" \
+            --notes "Dev build from $GITHUB_SHA, not yet tested in-game (compiled against stand-in Unity assemblies). Extract CarXModManager.zip into the game folder (it contains BepInEx/plugins/CarXModManager/CarXModManager.dll), launch, and look at the bottom-left corner of the screen. BepInEx/LogOutput.log should contain CARXMM_LOADED and CARXMM_ONGUI_FIRED."
