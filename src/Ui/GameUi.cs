@@ -265,8 +265,9 @@ internal static class GameUi
 
         Button button = rect.gameObject.AddComponent<Button>();
         button.targetGraphic = image;
-        button.transition = look.Transition;
-        if (look.Colors.HasValue) button.colors = look.Colors.Value;
+        // an Animator-driven button has no Animator on our copy: use the plain colour tint so hovering and pressing still show
+        button.transition = look.Transition == Selectable.Transition.Animation ? Selectable.Transition.ColorTint : look.Transition;
+        if (look.Colors.HasValue && look.Transition != Selectable.Transition.Animation) button.colors = look.Colors.Value;
         if (look.SpriteState != null) Optional($"copy the picture swap of {look.Source}", () => button.spriteState = look.SpriteState);
         // keep the controls out of the game's keyboard/gamepad navigation: pressing a direction must not jump onto them
         Optional("take the button out of the navigation", () =>
