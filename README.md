@@ -40,7 +40,7 @@ here so each mod doesn't re-implement them:
 ## Download
 
 Every push to `main` builds the plugin on GitHub Actions and republishes the **0.1-alpha** pre-release in this repo's
-Releases (a zip only; it is the only release kept, older ones are deleted on every build). Extract `CarXModManager.zip` into the game folder; it holds
+Releases (a zip only). Extract `CarXModManager.zip` into the game folder; it holds
 `BepInEx/plugins/CarXModManager/CarXModManager.dll`.
 
 CI has no access to the game's interop assemblies, so it compiles against stand-ins in `ci/UnityStubs/` with the
