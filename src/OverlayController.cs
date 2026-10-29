@@ -21,6 +21,7 @@ internal static class OverlayController
     private static string _logText = string.Empty;
     private static int _logVersion = -1;
     private static bool _onGuiLogged;
+    private static int _probeFrames;
     private static bool _hotkeyWarned;
     private static string? _keyName;
     private static Key _key;
@@ -123,6 +124,15 @@ internal static class OverlayController
         {
             _onGuiLogged = true;
             Plugin.Logger.LogInfo($"CARXMM_ONGUI_FIRED — IMGUI is running. Graphics API: {SystemInfo.graphicsDeviceType}; Unity {Application.unityVersion}; game {Application.version}.");
+        }
+        if (_probeFrames < 3)
+        {
+            // Three passes so both the Layout and Repaint events see the same controls.
+            _probeFrames++;
+            try { Ui.Probe(); }
+            finally { Ui.Unwind(); }
+            if (_probeFrames == 3)
+                Plugin.Logger.LogInfo($"CARXMM_UI_PROBE — IMGUI primitives unavailable in this game build: {Ui.MissingSummary}.");
         }
         if (!Open || _stopped) return;
 
@@ -282,6 +292,7 @@ internal static class OverlayController
         Ui.Label($"Graphics API: {SystemInfo.graphicsDeviceType}", Dim);
         Ui.Label($"Unity {Application.unityVersion}   game {Application.version}", Dim);
         Ui.Label($"Manager v{Plugin.PluginVersion}   mod API v{ModManagerApi.ApiVersion}", Dim);
+        Ui.Label($"IMGUI primitives unavailable in this build: {Ui.MissingSummary}", Dim);
         Ui.EndScroll();
     }
 }

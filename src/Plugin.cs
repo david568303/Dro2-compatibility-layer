@@ -12,7 +12,7 @@ namespace CarXModManager;
 public sealed class Plugin : BasePlugin
 {
     public const string PluginGuid = "carx.modmanager";
-    public const string PluginVersion = "0.1.1";
+    public const string PluginVersion = "0.1.2";
 
     internal static ManualLogSource Logger = null!;
     // A key name rather than ConfigEntry<Key>: the name is resolved against the game's real Key enum at runtime,
