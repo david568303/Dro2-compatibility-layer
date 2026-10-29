@@ -57,6 +57,7 @@ namespace UnityEngine
     {
         public Object(IntPtr pointer) : base(pointer) { }
         public static void Destroy(Object obj) { }
+        public int GetInstanceID() => 0;
     }
 
     public struct Color32
