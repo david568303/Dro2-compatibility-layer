@@ -30,6 +30,7 @@ public sealed class Plugin : BasePlugin
     internal static ManualLogSource Logger = null!;
     internal static ConfigEntry<bool> ShowStatusLine = null!;
     private StatusBehaviour? _status;
+    private MainThreadBehaviour? _mainThread;
 
     public override void Load()
     {
@@ -39,11 +40,17 @@ public sealed class Plugin : BasePlugin
 
         ModStatus.Install();
         _status = AddComponent<StatusBehaviour>();
+        _mainThread = AddComponent<MainThreadBehaviour>();
         Log.LogInfo($"CARXMM_LOADED — dev build {BuildId}.");
     }
 
     public override bool Unload()
     {
+        if (_mainThread != null)
+        {
+            Object.Destroy(_mainThread);
+            _mainThread = null;
+        }
         if (_status != null)
         {
             Object.Destroy(_status);

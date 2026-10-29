@@ -23,6 +23,20 @@ of the screen**, always on:
 It is drawn with Unity's IMGUI inside the engine, so it works on DX11 and DX12 alike and sits under ReShade
 instead of hooking `Present`.
 
+## Shared API for other mods (`CarXModManager.Api`)
+
+Other mods reference `CarXModManager.dll` and declare `[BepInDependency("carx.modmanager")]`. Game-wide helpers live
+here so each mod doesn't re-implement them:
+
+- `SafePatch.TryPatch(harmony, log, typeName, assemblyName, methodName, parameterCheck, prefix, postfix)` patches a
+  game method found by name at run time (no compile-time dependency on the game's types). Every failure (type
+  renamed, method changed, patch refused) is logged as an **Error under the calling mod's own log source**, so the
+  mod shows up in the status line as "with errors" and a game update that moves a method is visible at once.
+- `TextureTools.TryRead` / `TryWriteInPlace` copy the pixels of a readable `Texture2D` out as RGBA bytes and write
+  processed pixels back (SetPixels32 + Apply), so the processing in between can be plain managed code.
+- `MainThread.Post(name, work)` runs work on Unity's main thread from any thread, so heavy processing can run in the
+  background and only the Unity-facing part runs on the main thread.
+
 ## Download
 
 Every push to `main` builds the plugin on GitHub Actions and refreshes the **latest** pre-release in this repo's

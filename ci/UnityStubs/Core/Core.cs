@@ -59,6 +59,28 @@ namespace UnityEngine
         public static void Destroy(Object obj) { }
     }
 
+    public struct Color32
+    {
+        public byte r, g, b, a;
+        public Color32(byte r, byte g, byte b, byte a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+    }
+
+    public class Texture : Object
+    {
+        public Texture(IntPtr pointer) : base(pointer) { }
+        public int width { get; set; }
+        public int height { get; set; }
+        public bool isReadable => true;
+    }
+
+    public class Texture2D : Texture
+    {
+        public Texture2D(IntPtr pointer) : base(pointer) { }
+        public Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<Color32> GetPixels32() => null!;
+        public void SetPixels32(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<Color32> colors) { }
+        public void Apply() { }
+    }
+
     public class Component : Object { public Component(IntPtr pointer) : base(pointer) { } }
     public class Behaviour : Component { public Behaviour(IntPtr pointer) : base(pointer) { } }
     public class MonoBehaviour : Behaviour { public MonoBehaviour(IntPtr pointer) : base(pointer) { } }
