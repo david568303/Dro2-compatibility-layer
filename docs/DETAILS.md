@@ -38,6 +38,10 @@ here so each mod doesn't re-implement them:
   showing the original. Call `Replace(texture)` from a prefix on the game method that receives the texture and assign
   the result back to the argument. Textures with Read/Write disabled are copied on the GPU first (the original is
   left alone); results are cached per texture and old copies are destroyed, so reopening previews does not leak.
+  `TextureReplacer` can also keep results on disk (`cache:` argument, a `TextureCacheOptions`): finished textures are
+  stored under a hash (SHA-256) of the source pixels plus a settings key, so a texture that did not change is never
+  processed twice, even across game restarts. Entries are compressed, written atomically and trimmed least-recently-used
+  to a size limit.
 - `MainThread.Post(name, work)` runs work on Unity's main thread from any thread, so heavy processing can run in the
   background and only the Unity-facing part runs on the main thread.
 

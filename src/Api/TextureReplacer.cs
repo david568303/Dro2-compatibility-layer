@@ -26,6 +26,7 @@ public sealed class TextureReplacer
     private readonly string _tag;
     private readonly Processor _processor;
     private readonly int _maxKeptCopies;
+    private readonly Func<TextureCacheOptions?>? _cache;
 
     private readonly object _gate = new();
     private readonly HashSet<int> _ours = new();           // ids of textures that are replacements, or were processed in place
@@ -35,12 +36,18 @@ public sealed class TextureReplacer
 
     /// <param name="log">The calling mod's log source; failures are logged as Errors under it.</param>
     /// <param name="tag">Prefix of the log lines, e.g. "MAPMANAGER_PREVIEW".</param>
-    public TextureReplacer(ManualLogSource log, string tag, Processor processor, int maxKeptCopies = 6)
+    /// <param name="cache">
+    /// Optional. Called on every replacement; return null to skip the cache that time (e.g. the user switched it off).
+    /// Finished textures are stored on disk keyed by a hash of the source pixels and the settings key, so a texture that
+    /// did not change is never processed twice, even across game restarts.
+    /// </param>
+    public TextureReplacer(ManualLogSource log, string tag, Processor processor, int maxKeptCopies = 6, Func<TextureCacheOptions?>? cache = null)
     {
         _log = log;
         _tag = tag;
         _processor = processor;
         _maxKeptCopies = Math.Max(1, maxKeptCopies);
+        _cache = cache;
     }
 
     /// <summary>True if <paramref name="texture"/> is one this replacer produced (or already processed in place).</summary>
@@ -77,9 +84,24 @@ public sealed class TextureReplacer
             if (!TextureTools.TryRead(target, out byte[] rgba, out int width, out int height, out string? readProblem))
                 return Fail(id, readProblem ?? "could not read the texture", original, copy);
 
-            byte[] result = _processor(rgba, width, height);
-            if (result.Length != rgba.Length)
-                return Fail(id, "the processor returned a different number of pixels", original, copy);
+            byte[]? result = null;
+            string? cachePath = null;
+            TextureCacheOptions? cache = _cache?.Invoke();
+            bool hit = false;
+            if (cache != null)
+            {
+                cachePath = TextureCache.PathFor(cache, rgba, width, height);
+                result = TextureCache.TryLoad(cachePath, width, height, message => _log.LogWarning($"{_tag}_CACHE — {message}"));
+                hit = result != null;
+            }
+            if (result == null)
+            {
+                result = _processor(rgba, width, height);
+                if (result.Length != rgba.Length)
+                    return Fail(id, "the processor returned a different number of pixels", original, copy);
+                if (cache != null && cachePath != null)
+                    TextureCache.Save(cachePath, result, width, height, cache.MaxBytes, message => _log.LogWarning($"{_tag}_CACHE — {message}"));
+            }
             long processMs = total.ElapsedMilliseconds - copyMs;
 
             if (!TextureTools.TryWriteInPlace(target, result, width, height, out string? writeProblem))
@@ -87,7 +109,8 @@ public sealed class TextureReplacer
 
             if (copy != null) Remember(id, copy);
             else lock (_gate) _ours.Add(id);
-            _log.LogInfo($"{_tag}_REPLACED — {width}x{height}, {(copy != null ? "GPU copy" : "in place")}; copy {copyMs} ms, processing {processMs} ms, total {total.ElapsedMilliseconds} ms.");
+            string how = cache == null ? "no cache" : hit ? "cache HIT" : "cache miss, now stored";
+            _log.LogInfo($"{_tag}_REPLACED — {width}x{height}, {(copy != null ? "GPU copy" : "in place")}; {how}; copy {copyMs} ms, {(hit ? "cache read" : "processing")} {processMs} ms, total {total.ElapsedMilliseconds} ms.");
             return target;
         }
         catch (Exception exception)
