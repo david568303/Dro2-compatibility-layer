@@ -7,8 +7,8 @@ It does three things:
 
 1. a **status line** in the corner of the screen showing how many mods loaded and which have errors;
 2. a shared **API** other mods build on (`GameHooks.Create`), documented in [API.md](API.md);
-3. **integrations** with the game's own screens: a better server browser, a map list for room creation, and a tidied main
-   menu, all made inside the game's own screens (below).
+3. **integrations** with the game's own screens: the main menu with Play at the right, a better server browser, and a map list
+   for room creation, all made inside the game's own screens (below).
 
 ## The status line
 
@@ -77,17 +77,21 @@ time). It opens a list of every map the screen offers, official and mod, with mo
 
 ### Main menu (`[MainMenu]`)
 
-The game's main menu entries (Play, the server browser, Garage, Test drive, Workshop, Store, Mods, Settings, Info, Credits, Discord,
-Quit) are placed where the screen's designer put them. The mod manager tidies them: reading order (**Play first, the server browser
-right after it**, then Garage, Test drive, Workshop, Store, Mods, Settings, Info, Credits, Discord, Quit), the **same gap** between
-neighbours (`Gap`), one **common alignment** (a row shares a centre line, a column a left edge), and the whole group **where the menu
-was**, kept inside the central 16:9 part of the screen on a wider monitor. A menu too long for one line wraps into more lines. The
-entries keep their sizes, look and behaviour; only positions and order change. If the game arranges the entries with one of its layout
-groups, the group is kept and only its order and spacing change.
+The game puts the big **Play** button at the bottom left, above a row of tiles that starts with the server browser's globe tile
+(then Test drive, Workshop, My cars, Buy a car, Mods); the small icons (settings, info, Discord) and Quit are at the bottom right.
+With `PlaySide = Right` (the default) the mod manager moves **Play to the right edge of the menu**, lined up with the Quit button,
+and puts the **server browser tile directly on its left**, a square as tall as Play on the same line (`Gap` units away). The thin
+line the designer put under Play moves with it, and the tile row closes the gap the globe tile left. Sizes, looks and behaviour of
+every entry are untouched. `PlaySide = Left` is the game's own arrangement (nothing is changed).
 
-- `Arrangement`: `Tidy` keeps the menu's direction (a row stays a row), `Row` or `Column` force one.
-- Keyboard / gamepad navigation: an entry whose neighbours were set by hand would still point at its old neighbours, so it is switched to
-  automatic navigation (nearest entry in the pressed direction).
+- The menu is not one list (Play is placed by hand, the tiles and the small icons are arranged by two of the game's layout groups,
+  Quit by hand), so this is written for that structure: entries are found through their `MenuItem` components (`Play`,
+  `OnlineMenu`). The menu has two entries of type `Play` (the visible button under the screen's root, and a leftover under the game's
+  logo that the logo's mask cuts off); the one closest to the root is used.
+- The server browser tile is taken out of the tile row (made a child of the screen's root, like Play) rather than just moved,
+  because the row is content-sized: a tile that stayed inside would drift whenever the row's width changes.
+- Keyboard / gamepad navigation: an entry whose neighbours were set by hand would still point at its old neighbours, so it is
+  switched to automatic navigation (nearest entry in the pressed direction).
 - The menu's original layout is written to `BepInEx/carx.modmanager.ui-mainmenu.txt` before anything is changed.
 
 ### Settings
@@ -100,7 +104,7 @@ groups, the group is kept and only its order and spacing change.
 | `[ServerBrowser] Enabled`, `ShowControlBar`, `HideFull`, `HideEmpty`, `HideLocked`, `Sort`, `LoadAllRooms`, `MaxPagesToLoad` | on, on, off, off, off, Server, true, 30 | See above; the switches and sort are also changed in the bar and remembered. `ShowControlBar = false` keeps loading all pages but adds no buttons. |
 | `[ServerBrowser] BarPlacement` | Auto | `Auto` (below the list, or at the bottom of the screen if the game's layout would undo resizing the list), `BelowList`, `AboveList`, `ScreenBottom`, `ScreenTop`. |
 | `[TrackPicker] Enabled`, `OnlyFavorites`, `OnlyMods`, `SortByName` | on, off, off, off | See above; also changed in the list and remembered. |
-| `[MainMenu] Enabled`, `Arrangement`, `Gap` | on, Tidy, 18 | Tidy the main menu (see above); `Gap` is the space between entries in the screen's units (1080 units high). |
+| `[MainMenu] Enabled`, `PlaySide`, `Gap` | on, Right, 12 | Rearrange the main menu (see above): `Right` puts Play at the right edge with the server browser tile on its left, `Left` leaves the game's arrangement; `Gap` is the space between those two in the screen's units (1080 units high). |
 | `[TrackPicker] ButtonPlacement`, `ButtonOffsetX`, `ButtonOffsetY` | Auto, 0, 0 | Where the Browse maps button goes (`Auto` picks the first of `Right`, `Left`, `OnLabel` where it is fully visible); the offsets move it afterwards, in the screen's units. |
 
 ### How the integrations work
@@ -122,11 +126,13 @@ How the game's UI is built, and where the hooks go, is in [GAME-UI.md](GAME-UI.m
   then ignored so nothing is typed twice). While typing, the game's input is held with its own input lock
   (`InputLocker.LockInput`), the mechanism the game uses during screen transitions, and released when typing ends.
 - **Main menu**: no hook; twice a second the mod looks for the open `UIMainMenuContext`, waits half a second for it to settle, and
-  collects its `MenuItem` entries (found through the context's button fields and by searching under the screen and the buttons'
-  container). Checks: the entries exist and are buttons, can be moved, are positioned by hand or by one horizontal / vertical layout
-  group, and the new arrangement fits and stays on screen. The result is verified, and **checked again every half second**: if the
-  game moves the entries back (an animation, a reset) they are put back up to three times, after that the change is undone for good
-  (`MAINMENU_OVERRIDDEN`). An entry is compared by its centre, so the entry's own hover animation does not count as being moved.
+  collects its `MenuItem` entries (found by searching under the screen and under the container of its button fields). Checks: a Play
+  entry exists and is a button, Play's parent is not a layout group (a group would undo the move), the server browser entry (if on
+  screen) is a button, and the new places are inside the usable area (the screen's 16:9 part, minus a margin), not cut off by a mask
+  and free of every other entry. The result is verified, and **checked again every half second**: if the game moves the entries back
+  (an animation, a reset) they are put back up to three times, after that the change is undone for good (`MAINMENU_OVERRIDDEN`). An
+  entry is compared by its centre, so its own hover animation does not count as being moved. A menu that is not ready (too few
+  entries, no Play entry yet) is waited for (`MAINMENU_WAITING`), which does not count as a failed try.
 - **Layout reference**: when the controls are added, the layout of the screen (every object with its size, position and
   components) is written to `BepInEx/carx.modmanager.ui-serverbrowser.txt` / `ui-createroom.txt`. It shows what is where, so a
   control can be moved to a free spot, and is the first thing to look at if a control ends up somewhere unexpected.
@@ -142,7 +148,7 @@ all, the status line and the API are unaffected.
 | `src/Plugin.cs` | The BepInEx plugin: GUID, name, version, build id, the `ShowStatusLine` setting; starts the status line and installs the integrations. |
 | `src/Api/GameHooks.cs` | The public API for other mods. |
 | `src/StatusLine/` | The status line: log tracker, drawing, the injected component, guarded IMGUI calls. |
-| `src/Integrations/` | One folder per integration (`ServerBrowser`: hooks, state, `ServerBrowserBar`; `TrackPicker`: hooks, state, `TrackPickerPopup`; `MainMenu`: finds the menu and tidies it), `IIntegration`, `HookSpec` (hooks declared as data) and `IntegrationHost` (installs and runs them). |
+| `src/Integrations/` | One folder per integration (`ServerBrowser`: hooks, state, `ServerBrowserBar`; `TrackPicker`: hooks, state, `TrackPickerPopup`; `MainMenu`: finds the menu and moves Play), `IIntegration`, `HookSpec` (hooks declared as data) and `IntegrationHost` (installs and runs them). |
 | `src/Ui/` | Building controls inside the game's screens: `GameUi` (create buttons/texts styled after the game's own, find where there is room, the dry run), `UiDump` (layout reference file), `RectMemory` (put a moved object back exactly), `TextCapture` / `InputSystemKeyboard` (typing into a search button), `InputGuard` (the game's input lock), `IntegrationsBehaviour` (the injected component that runs it all). |
 | `src/Il2Cpp/` | Reading and building the game's collection objects. |
 | `src/Logic/` | Game-independent code (search, filters, sorting, paging, favourites, text editing, the preflight checklist, placement geometry), covered by the tests. |
@@ -181,7 +187,7 @@ dotnet build -c Release -p:UseBepInExPackages=true -p:GameInteropDirectory="$PWD
 
 | What | How |
 |---|---|
-| Logic tests (search, filters, sorting, favourites, page loading, text editing, preflight, placement geometry, the map list pager, the main menu layout) | `dotnet run --project tests` (also run by CI before a release) |
+| Logic tests (search, filters, sorting, favourites, page loading, text editing, preflight, placement geometry, the map list pager, the placement of the main menu's Play and server browser entries) | `dotnet run --project tests` (also run by CI before a release) |
 | Hooks vs. the game's real assemblies | `dotnet build tools/HookCheck -o /tmp/hc`, copy `CarXModManager.dll` (built against the game) next to it, then `dotnet /tmp/hc/HookCheck.dll --interop <game interop folder> --plugin /tmp/hc/CarXModManager.dll` |
 | Regenerate and verify the CI stand-ins | `tools/regenerate-stubs.sh <game interop folder>` |
 
@@ -205,9 +211,9 @@ After launching, `BepInEx/LogOutput.log` should contain, under `[CarX Mod Manage
 | `SERVERBROWSER_UI_BUILT` | The control bar was added; names the layout reference file. |
 | `TRACKPICKER_OPENED` / `_OPTIONS` / `_SELECT` | The create-room screen opened, how many maps it offers, a map was picked. |
 | `TRACKPICKER_CHECKS` / `TRACKPICKER_CHECK_FAILED` / `TRACKPICKER_BUILD_FAILED` / `TRACKPICKER_UI_BUILT` | The same four for the Browse maps button and list. |
-| `MAINMENU_WATCHING` / `MAINMENU_UI_DUMP` / `MAINMENU_WAITING` | The main menu tidying is on; where the menu's original layout was written; the menu is not ready yet (too few entries, an entry partly off screen, ...) and the reason. |
-| `MAINMENU_CHECKS` / `MAINMENU_CHECK_FAILED` / `MAINMENU_ARRANGED` / `MAINMENU_VERIFY_FAILED` | The checklist passed (with what was found) or failed (which checks and why; the menu is then left as the game made it); the menu was tidied (with every entry's box before and after); the result did not look right and was put back. |
-| `MAINMENU_MOVED` / `MAINMENU_OVERRIDDEN` / `MAINMENU_ENTRIES_CHANGED` | The game moved the entries and they were put back; the game keeps moving them so the change was undone for good; the set of entries changed (for example Mods became available) and the menu is arranged again. |
+| `MAINMENU_WATCHING` / `MAINMENU_UI_DUMP` / `MAINMENU_WAITING` | The main menu rearranging is on; where the menu's original layout was written; the menu is not ready yet (too few entries, no Play entry) and the reason. |
+| `MAINMENU_CHECKS` / `MAINMENU_CHECK_FAILED` / `MAINMENU_ARRANGED` / `MAINMENU_VERIFY_FAILED` | The checklist passed (with what was found) or failed (which checks and why; the menu is then left as the game made it); Play and the server browser tile were moved (with their boxes before and after); the result did not look right and was put back. |
+| `MAINMENU_MOVED` / `MAINMENU_OVERRIDDEN` / `MAINMENU_ENTRIES_CHANGED` | The game moved the entries and they were put back; the game keeps moving them so the change was undone for good; the Play or server browser entry appeared or disappeared and the menu is arranged again. |
 | `TEXTINPUT_SOURCE` | Typing into a search button works, and through which source (the Input System or IMGUI key events). `TEXTINPUT_INPUTSYSTEM_UNAVAILABLE` = the Input System could not be used; IMGUI key events are used alone. |
 | `INPUT_HELD` / `INPUT_RELEASED` | The game's input was held back while typing, and given back. |
 | `UI_STEP_SKIPPED` | A cosmetic step (for example keeping a control out of the gamepad navigation) is not supported in this game build; the control works without it. |

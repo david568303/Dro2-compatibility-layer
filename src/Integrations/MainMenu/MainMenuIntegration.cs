@@ -10,29 +10,28 @@ using Object = UnityEngine.Object;
 
 namespace CarXModManager.Integrations.MainMenu;
 
-/// <summary>How the main menu's entries are arranged (the <c>[MainMenu] Arrangement</c> setting).</summary>
-internal enum MenuArrangement
+/// <summary>Which side of the main menu the Play entry is on (the <c>[MainMenu] PlaySide</c> setting).</summary>
+internal enum PlaySide
 {
-    /// <summary>Keep the menu's direction (a row stays a row, a column a column) and tidy it.</summary>
-    Tidy,
-    /// <summary>One row, left to right (wrapping into more rows if it is too long).</summary>
-    Row,
-    /// <summary>One column, top to bottom (wrapping into more columns if it is too tall).</summary>
-    Column,
+    /// <summary>Play at the right edge of the menu with the server browser entry on its left.</summary>
+    Right,
+    /// <summary>The game's own arrangement (Play at the left): nothing is changed.</summary>
+    Left,
 }
 
 /// <summary>
-/// Tidies the main menu. The game's menu entries (Play, the server browser, Garage, Settings, ...) are placed where the screen's designer
-/// put them; this puts them in reading order (Play first, the server browser right after it), the same distance apart, on one common
-/// alignment, as one group where the menu was and inside the usable part of the screen (the central 16:9 area on a wider monitor). The
-/// entries keep their sizes, their look and everything they do; only their positions and order change. If the entries are arranged by one
-/// of the game's layout groups instead of placed by hand, the group is kept and only its order and spacing change.
+/// Rearranges the main menu's primary entries. The game puts the big Play button at the bottom left, above a row of tiles that begins with
+/// the server browser's globe tile. This moves <b>Play to the right edge of the menu</b> (lined up with the Quit button) and puts the
+/// <b>server browser entry directly on its left</b>, as a square as tall as Play on the same line; the thin line the designer put under Play
+/// moves with it, and the row of tiles closes the gap the globe tile left. Sizes, looks and behaviour of all entries are untouched.
 /// <para>
-/// This follows the same rules as the other integrations: nothing is changed unless the checks in <see cref="Arrange"/> pass (the entries
-/// exist and are buttons, are positioned in a way this can change, and the new arrangement fits); the result is verified and undone if
-/// it is wrong; and it keeps being verified, because the game may move its entries again (an animation, the screen being reset), in which
-/// case the change is undone and the log says so. The menu's original layout is written to
-/// <c>BepInEx/carx.modmanager.ui-mainmenu.txt</c> before anything is changed.
+/// The menu is not one list: Play is placed by hand, the tiles are arranged by one of the game's layout groups, the small icons by another,
+/// Quit by hand. So this is written for that structure, found through the entries' <c>MenuItem</c> components (<c>Play</c>,
+/// <c>OnlineMenu</c>), and it follows the same rules as the other integrations: nothing is changed unless the checks in
+/// <see cref="Arrange"/> pass (Play and the server browser entry exist and are buttons, Play's parent is not a layout group, the new
+/// places are inside the usable area and free); the result is verified and undone if it is wrong; and it keeps being verified, because
+/// the game may move its entries again (an animation, the screen being reset), in which case the change is undone and the log says so. The
+/// menu's original layout is written to <c>BepInEx/carx.modmanager.ui-mainmenu.txt</c> before anything is changed.
 /// </para>
 /// </summary>
 internal sealed class MainMenuIntegration : IIntegration
@@ -52,21 +51,21 @@ internal sealed class MainMenuIntegration : IIntegration
     /// <summary>Openings of the menu whose every try failed, after which it is left alone for the rest of the session.</summary>
     private const int MaxFailedOpenings = 3;
 
-    /// <summary>Space kept free between the arranged menu and the edge of the usable area.</summary>
+    /// <summary>Space kept free between the usable area and the edge of the menu's own screen.</summary>
     private const float Margin = 24f;
 
     /// <summary>The fewest entries that make the menu worth arranging (a menu that is still being filled has fewer).</summary>
     private const int MinEntries = 4;
 
     private ConfigEntry<bool> _enabled = null!;
-    private ConfigEntry<MenuArrangement> _arrangement = null!;
+    private ConfigEntry<PlaySide> _playSide = null!;
     private ConfigEntry<float> _gap = null!;
 
     private UIMainMenuContext? _view;
     private float _nextPoll, _visibleSince = -1f, _retryAt;
     private int _attempt, _failedOpenings;
     private bool _dumped, _waitingLogged;
-    private Arranged? _arranged;
+    private Moved? _moved;
 
     /// <inheritdoc />
     public string Name => "MainMenu";
@@ -81,18 +80,17 @@ internal sealed class MainMenuIntegration : IIntegration
     /// <inheritdoc />
     public void BindConfig(ConfigFile config)
     {
-        _enabled = config.Bind(Name, "Enabled", true,
-            "Tidy the main menu: entries in reading order (Play first, the server browser next), evenly spaced and aligned. false = the game's menu as designed.");
-        _arrangement = config.Bind(Name, "Arrangement", MenuArrangement.Tidy,
-            "Tidy = keep the menu's direction (row or column) and tidy it. Row or Column force one direction (wrapping into more lines if the menu is too long). Ignored if the game arranges the entries with a layout group (only its order and spacing change then).");
-        _gap = config.Bind(Name, "Gap", 18f,
-            new ConfigDescription("Space between neighbouring entries, in the screen's units (1080 units high).", new AcceptableValueRange<float>(2f, 120f)));
+        _enabled = config.Bind(Name, "Enabled", true, "Rearrange the main menu (see PlaySide). false = the game's menu as designed.");
+        _playSide = config.Bind(Name, "PlaySide", PlaySide.Right,
+            "Right = the Play entry at the right edge of the menu with the server browser entry on its left. Left = the game's own arrangement (nothing is changed).");
+        _gap = config.Bind(Name, "Gap", 12f,
+            new ConfigDescription("Space between the server browser entry and Play, in the screen's units (1080 units high).", new AcceptableValueRange<float>(0f, 120f)));
     }
 
     /// <inheritdoc />
     public bool Install(Harmony harmony, ManualLogSource log)
     {
-        log.LogInfo("MAINMENU_WATCHING — the main menu will be tidied when it opens (no hooks needed).");
+        log.LogInfo($"MAINMENU_WATCHING — the main menu will be rearranged when it opens (Play side: {_playSide.Value}; no hooks needed).");
         return true;
     }
 
@@ -118,7 +116,7 @@ internal sealed class MainMenuIntegration : IIntegration
         if (_view == null || _view.Pointer != view.Pointer)
         {
             _view = view; // a new instance of the screen: whatever was done to the old one is gone with it
-            _arranged = null;
+            _moved = null;
             _visibleSince = -1f;
         }
         if (_visibleSince < 0f)
@@ -136,8 +134,8 @@ internal sealed class MainMenuIntegration : IIntegration
         {
             Plugin.LogSource.LogError($"MAINMENU_ERROR — {exception}");
             _failedOpenings = MaxFailedOpenings; // an exception is a bug, not a timing problem: stop touching the menu
-            Undo(_arranged);
-            _arranged = null;
+            Undo(_moved);
+            _moved = null;
             IntegrationHealth.Report(Name, "stopped after an error");
         }
     }
@@ -163,31 +161,31 @@ internal sealed class MainMenuIntegration : IIntegration
             Transform root = CommonAncestor(items.Select(item => item.transform).Append(view.transform)) ?? view.transform;
             Plugin.LogSource.LogInfo($"MAINMENU_UI_DUMP — the main menu's original layout: {UiDump.Write("mainmenu", root, 7, 1500)}");
         }
+        if (_playSide.Value == PlaySide.Left) return; // the game's own arrangement was asked for
 
         // not ready (hidden behind another screen, still being filled, sliding in): wait, without counting it as a failed try
-        string? waiting = NotReadyBecause(items, canvas);
-        if (waiting != null)
+        if (items.Count < MinEntries || FindPlay(view, items) == null)
         {
             if (!_waitingLogged)
             {
                 _waitingLogged = true;
-                Plugin.LogSource.LogInfo($"MAINMENU_WAITING — the main menu is not ready to be arranged yet: {waiting}.");
+                Plugin.LogSource.LogInfo($"MAINMENU_WAITING — the main menu is not ready to be rearranged yet: {(items.Count < MinEntries ? $"only {items.Count} entries so far" : "no Play entry yet")}.");
             }
             return;
         }
 
         string signature = Signature(items);
-        if (_arranged != null && _arranged.Signature == signature)
+        if (_moved != null && _moved.Signature == signature)
         {
-            if (!Holds(_arranged)) Reapply(_arranged);
+            if (!Holds(_moved)) Reapply(_moved);
             return;
         }
 
-        if (_arranged != null)
+        if (_moved != null)
         {
-            Plugin.LogSource.LogInfo("MAINMENU_ENTRIES_CHANGED — the set of menu entries changed; arranging again.");
-            Undo(_arranged);
-            _arranged = null;
+            Plugin.LogSource.LogInfo("MAINMENU_ENTRIES_CHANGED — the Play or server browser entry appeared or disappeared; arranging again.");
+            Undo(_moved);
+            _moved = null;
         }
         if (_attempt >= AttemptsPerOpening) return;
         _attempt++;
@@ -197,16 +195,6 @@ internal sealed class MainMenuIntegration : IIntegration
             if (last) _failedOpenings++;
             else _retryAt = now + _attempt; // a screen still sliding in gets a little longer each time
         }
-    }
-
-    /// <summary>Why the menu cannot be arranged yet (too few entries, no Play entry, an entry off screen), or <c>null</c> if it can.</summary>
-    private static string? NotReadyBecause(List<MenuItem> items, RectTransform canvas)
-    {
-        if (items.Count < MinEntries) return $"only {items.Count} entries so far";
-        if (!items.Any(item => KindOf(item) == "Play")) return "no Play entry yet";
-        var screen = new Box(canvas.rect.x, canvas.rect.y, canvas.rect.width, canvas.rect.height);
-        string[] off = items.Where(item => !screen.Contains(GameUi.BoxIn(canvas, GameUi.RectOf(item) ?? canvas), 2f)).Select(KindOf).ToArray();
-        return off.Length > 0 ? $"{string.Join(", ", off)} {(off.Length == 1 ? "is" : "are")} outside the screen (the menu may be hidden or sliding in)" : null;
     }
 
     // ---- finding the entries -------------------------------------------------------------------------------------------
@@ -243,6 +231,25 @@ internal sealed class MainMenuIntegration : IIntegration
         return items;
     }
 
+    /// <summary>
+    /// The Play entry the player sees. The menu has two entries of type Play (the visible button under the screen's root, and a leftover under
+    /// the game's logo that is cut off by the logo's mask), so the one closest to the root wins, the bigger one if they are equally close.
+    /// </summary>
+    private static MenuItem? FindPlay(UIMainMenuContext view, List<MenuItem> items) =>
+        items.Where(item => KindOf(item) == "Play")
+            .OrderBy(item => Depth(item.transform, view.transform))
+            .ThenByDescending(item => GameUi.RectOf(item)?.rect.width * GameUi.RectOf(item)?.rect.height ?? 0f)
+            .FirstOrDefault();
+
+    private static MenuItem? FindOnline(List<MenuItem> items) => items.FirstOrDefault(item => KindOf(item) == "OnlineMenu");
+
+    private static int Depth(Transform node, Transform root)
+    {
+        int depth = 0;
+        for (Transform? t = node; t != null && t.Pointer != root.Pointer; t = t.parent) depth++;
+        return depth;
+    }
+
     /// <summary>The lowest object that holds all the given objects, or <c>null</c> for none.</summary>
     private static Transform? CommonAncestor(IEnumerable<Transform> transforms)
     {
@@ -265,96 +272,84 @@ internal sealed class MainMenuIntegration : IIntegration
 
     private static string KindOf(MenuItem item) => item.Type.ToString();
 
-    private static string Signature(List<MenuItem> items) => string.Join(",", items.Select(KindOf).OrderBy(kind => kind, StringComparer.Ordinal));
+    /// <summary>Which of the two entries this moves are on screen, so a change in that means arranging again.</summary>
+    private string Signature(List<MenuItem> items) => $"play:{FindPlay(_view!, items) != null},online:{FindOnline(items) != null}";
 
     // ---- arranging -------------------------------------------------------------------------------------------------------
 
-    /// <summary>How the entries are positioned in the game.</summary>
-    private enum Positioning
-    {
-        /// <summary>By hand: each entry has its own place, which this can set.</summary>
-        ByHand,
-        /// <summary>By one horizontal or vertical layout group of the game, which decides the places; only its order and spacing can change.</summary>
-        LayoutGroup,
-    }
-
     /// <summary>What was changed, so it can be checked and undone.</summary>
-    private sealed class Arranged
+    private sealed class Moved
     {
         public string Signature = string.Empty;
-        public Positioning Positioning;
-        public List<MenuItem> Items = new();
-        public List<RectTransform> Rects = new();          // the object that is positioned for each entry
-        public Box[] Planned = Array.Empty<Box>();         // by hand: where each entry should be
-        public List<RectMemory> Memories = new();          // by hand: where each entry was
-        public HorizontalOrVerticalLayoutGroup? Group;     // layout group: the group
-        public float OldSpacing, AppliedSpacing;
-        public List<int> OldSiblingIndexes = new();        // layout group: where each entry's slot was among its siblings
-        public int[] Places = Array.Empty<int>();          // layout group: the sibling positions the entries occupy, in order
-        public int[] ByRank = Array.Empty<int>();          // layout group: the entries (indexes) in reading order
-        public List<(Selectable Selectable, Navigation.Mode Mode)> Navigation = new(); // entries whose explicit navigation was set to automatic
         public RectTransform Canvas = null!;
+        public RectTransform PlayRect = null!, PlayParent = null!;
+        public Box PlayPlanned;
+        public RectMemory PlayMemory = null!;
+        public RectTransform? OnlineRect;
+        public Box OnlinePlanned;
+        public RectMemory? OnlineMemory;
+        public Transform? OnlineOldParent;
+        public int OnlineOldIndex;
+        public RectTransform? DecorationRect;   // the thin line under Play
+        public Box DecorationPlanned;
+        public RectMemory? DecorationMemory;
+        public List<MenuItem> Entries = new();  // every entry of the menu (navigation, overlap checks)
+        public List<(Selectable Selectable, Navigation.Mode Mode)> Navigation = new();
         public int Reapplies;
     }
 
     private bool Arrange(UIMainMenuContext view, RectTransform canvas, List<MenuItem> items, string signature, int attempt, bool last)
     {
         var report = new Preflight();
-        Positioning positioning = Positioning.ByHand;
-        HorizontalOrVerticalLayoutGroup? group = null;
-        var rects = new List<RectTransform>();
-        MenuPlan? plan = null;
-        MenuFlow flow = MenuFlow.Column;
+        MenuItem? play = null, online = null;
+        RectTransform? playRect = null, onlineRect = null, playParent = null, decorationRect = null;
+        Box playBox = default, onlineBox = default, decorationBox = default;
+        PairPlan? plan = null;
         var screen = new Box(canvas.rect.x, canvas.rect.y, canvas.rect.width, canvas.rect.height);
-        float usableWidth = Math.Min(screen.Width, screen.Height * 16f / 9f); // on a wider monitor the central 16:9 part is where the game's screens are laid out
-        var usable = new Box(screen.CenterX - usableWidth / 2f + Margin, screen.Y + Margin, usableWidth - 2f * Margin, screen.Height - 2f * Margin);
+        Box menu = GameUi.BoxIn(canvas, GameUi.RectOf(view) ?? canvas);
+        float usableWidth = Math.Min(menu.Width, menu.Height * 16f / 9f);
+        var usable = new Box(menu.CenterX - usableWidth / 2f + Margin, menu.Y + Margin, usableWidth - 2f * Margin, menu.Height - 2f * Margin);
 
-        report.Check("the screen's root", true, $"{screen.Width:0} x {screen.Height:0} units, usable {usable.Width:0} x {usable.Height:0}");
-        report.Check("the menu has its entries", true, $"{items.Count} on screen: {string.Join(", ", items.Select(KindOf))}");
-        report.Check("every entry is a button", () =>
+        report.Check("the screen's root", true, $"menu {menu.Width:0} x {menu.Height:0} units, usable {usable.Width:0} x {usable.Height:0}");
+        report.Check("the Play entry", () =>
         {
-            string[] notButtons = items.Where(item => item.gameObject.GetComponent<Button>() == null).Select(KindOf).ToArray();
-            return (notButtons.Length == 0, notButtons.Length == 0 ? "yes" : $"no button on: {string.Join(", ", notButtons)}");
+            play = FindPlay(view, items);
+            if (play == null) return (false, "no entry of type Play");
+            playRect = GameUi.RectOf(play);
+            if (playRect == null) return (false, "the Play entry has no RectTransform");
+            playBox = GameUi.BoxIn(canvas, playRect);
+            string[] ignored = items.Where(item => KindOf(item) == "Play" && item.Pointer != play.Pointer).Select(item => item.gameObject.name).ToArray();
+            return (true, $"'{play.gameObject.name}' at {Describe(playBox)}{(ignored.Length > 0 ? $"; also ignored: {string.Join(", ", ignored)}" : string.Empty)}");
         });
-        report.Check("every entry can be moved", () =>
+        report.Check("Play can be moved by hand", () =>
         {
-            foreach (MenuItem item in items)
-            {
-                RectTransform? rect = GameUi.RectOf(item);
-                if (rect == null) return (false, $"'{KindOf(item)}' has no RectTransform");
-                if (GameUi.RectOf(rect.parent) == null) return (false, $"'{KindOf(item)}' has no UI parent");
-                rects.Add(rect);
-            }
-            return (true, "yes");
+            if (play!.gameObject.GetComponent<Button>() == null) return (false, "the Play entry is not a button");
+            playParent = GameUi.RectOf(playRect!.parent);
+            if (playParent == null) return (false, "Play has no UI parent");
+            if (playParent.gameObject.GetComponent<LayoutGroup>() != null) return (false, $"Play's parent '{playParent.gameObject.name}' is a layout group, which would undo the move");
+            return (true, $"its parent is '{playParent.gameObject.name}'");
+        });
+        report.Check("the server browser entry", () =>
+        {
+            online = FindOnline(items);
+            if (online == null) return (true, "not on screen; only Play moves");
+            onlineRect = GameUi.RectOf(online);
+            if (onlineRect == null || online.gameObject.GetComponent<Button>() == null) return (false, $"'{online.gameObject.name}' is not a button with a RectTransform");
+            onlineBox = GameUi.BoxIn(canvas, onlineRect);
+            return (true, $"'{online.gameObject.name}' at {Describe(onlineBox)} inside '{onlineRect.parent.gameObject.name}'");
         });
         if (report.Passed)
         {
-            report.Check("how the entries are positioned", () =>
+            report.Check("the new places are free", () =>
             {
-                (LayoutGroup? found, bool mixed) = FindLayoutGroup(canvas, rects);
-                if (mixed) return (false, "some entries are arranged by a layout group and some are not (or by different groups); not changed");
-                if (found == null) return (true, "by hand");
-                group = found.TryCast<HorizontalOrVerticalLayoutGroup>();
-                if (group == null) return (false, "the entries are arranged by a grid layout group; not supported yet");
-                positioning = Positioning.LayoutGroup;
-                flow = found.TryCast<HorizontalLayoutGroup>() != null ? MenuFlow.Row : MenuFlow.Column;
-                return (true, $"by the game's {(flow == MenuFlow.Row ? "horizontal" : "vertical")} layout group '{found.gameObject.name}'");
-            });
-        }
-        if (report.Passed && positioning == Positioning.ByHand)
-        {
-            report.Check("the new arrangement fits", () =>
-            {
-                var entries = Enumerable.Range(0, items.Count).Select(i => new MenuEntry(KindOf(items[i]), GameUi.BoxIn(canvas, rects[i]))).ToList();
-                flow = _arrangement.Value switch
-                {
-                    MenuArrangement.Row => MenuFlow.Row,
-                    MenuArrangement.Column => MenuFlow.Column,
-                    _ => MenuLayout.DetectFlow(entries.Select(entry => entry.Box).ToList()),
-                };
-                plan = MenuLayout.Plan(entries, usable, flow, _gap.Value);
-                bool visible = plan.Fits && plan.Boxes.All(box => ScreenGeometry.IsVisible(box, screen, Array.Empty<Box>()));
-                return (plan.Fits && visible, plan.Detail);
+                List<Box> others = items.Where(item => item.Pointer != play!.Pointer && (online == null || item.Pointer != online.Pointer))
+                    .Select(item => GameUi.BoxIn(canvas, GameUi.RectOf(item)!)).ToList();
+                // the menu's right margin is where its right-hand entries (Quit, the small icons) end
+                float rightEdge = others.Where(box => box.CenterX > menu.CenterX).Select(box => box.Right).DefaultIfEmpty(usable.Right).Max();
+                plan = PlayPairLayout.PlaceAtRight(playBox, online == null ? null : onlineBox, rightEdge, _gap.Value, usable, others);
+                bool visible = plan.Fits && ScreenGeometry.IsVisible(plan.Play, screen, GameUi.ClippersOf(canvas, playRect!))
+                    && (plan.Online == null || ScreenGeometry.IsVisible(plan.Online.Value, screen, Array.Empty<Box>()));
+                return (plan.Fits && visible, plan.Fits && !visible ? "the new places would be cut off" : plan.Detail);
             });
         }
 
@@ -372,20 +367,51 @@ internal sealed class MainMenuIntegration : IIntegration
         }
         Plugin.LogSource.LogInfo($"MAINMENU_CHECKS — {report.Describe()}");
 
-        var arranged = new Arranged { Signature = signature, Positioning = positioning, Items = items, Canvas = canvas };
-        var before = items.Select((item, i) => $"{KindOf(item)} {Describe(GameUi.BoxIn(canvas, rects[i]))}").ToList();
+        // the thin line the designer put under Play goes with it
+        for (int i = 0; i < playParent!.childCount && decorationRect == null; i++)
+        {
+            Transform child = playParent.GetChild(i);
+            RectTransform? candidate = GameUi.RectOf(child);
+            if (candidate == null || candidate.Pointer == playRect!.Pointer || !child.gameObject.activeInHierarchy || child.childCount != 0) continue;
+            if (child.gameObject.GetComponent<Image>() == null) continue;
+            Box box = GameUi.BoxIn(canvas, candidate);
+            if (!PlayPairLayout.IsUnderline(box, playBox)) continue;
+            decorationRect = candidate;
+            decorationBox = box;
+        }
+
+        var moved = new Moved
+        {
+            Signature = signature, Canvas = canvas, Entries = items,
+            PlayRect = playRect!, PlayParent = playParent, PlayPlanned = plan!.Play, PlayMemory = new RectMemory(playRect!),
+        };
+        if (onlineRect != null)
+        {
+            moved.OnlineRect = onlineRect;
+            moved.OnlinePlanned = plan.Online!.Value;
+            moved.OnlineMemory = new RectMemory(onlineRect);
+            moved.OnlineOldParent = onlineRect.parent;
+            moved.OnlineOldIndex = onlineRect.GetSiblingIndex();
+        }
+        if (decorationRect != null)
+        {
+            moved.DecorationRect = decorationRect;
+            moved.DecorationPlanned = PlayPairLayout.MoveWith(decorationBox, playBox, plan.Play);
+            moved.DecorationMemory = new RectMemory(decorationRect);
+        }
+
+        var before = $"Play {Describe(playBox)}{(online != null ? $"; {online.gameObject.name} {Describe(onlineBox)}" : string.Empty)}";
         try
         {
-            if (positioning == Positioning.ByHand) PlaceByHand(arranged, rects, plan!);
-            else ArrangeInGroup(arranged, group!, items, rects);
-            UseAutomaticNavigation(arranged);
+            Apply(moved);
+            UseAutomaticNavigation(moved);
 
             var verified = new Preflight();
-            VerifyArranged(verified, arranged, screen);
+            VerifyMoved(verified, moved, screen);
             if (!verified.Passed)
             {
                 string failure = $"MAINMENU_VERIFY_FAILED — the menu was rearranged but does not look right, so it was put back: {verified.Describe()}{tryNote}";
-                Undo(arranged);
+                Undo(moved);
                 if (last)
                 {
                     Plugin.LogSource.LogError(failure);
@@ -395,93 +421,39 @@ internal sealed class MainMenuIntegration : IIntegration
                 return false;
             }
 
-            _arranged = arranged;
+            _moved = moved;
             IntegrationHealth.Clear(Name);
-            var after = items.Select((item, i) => $"{KindOf(item)} {Describe(GameUi.BoxIn(canvas, GameUi.RectOf(item)!))}");
-            string what = positioning == Positioning.ByHand ? plan!.Detail : "order and spacing set on the game's layout group";
-            Plugin.LogSource.LogInfo($"MAINMENU_ARRANGED — {what}; verified: {verified.Describe()} Before: {string.Join("; ", before)}. After: {string.Join("; ", after)}.");
+            string after = $"Play {Describe(GameUi.BoxIn(canvas, moved.PlayRect))}{(moved.OnlineRect != null ? $"; {online!.gameObject.name} {Describe(GameUi.BoxIn(canvas, moved.OnlineRect))}" : string.Empty)}";
+            Plugin.LogSource.LogInfo($"MAINMENU_ARRANGED — {plan.Detail}{(moved.DecorationRect != null ? $"; the line under Play ('{moved.DecorationRect.gameObject.name}') moved with it" : string.Empty)}; verified: {verified.Describe()} Before: {before}. After: {after}.");
             return true;
         }
         catch (Exception)
         {
-            Undo(arranged);
+            Undo(moved);
             throw; // reported by Update, which stops touching the menu
         }
     }
 
-    /// <summary>
-    /// The layout group that arranges the entries, if there is one: all entries must be arranged by the same single group. Only objects below
-    /// the screen's root are looked at.
-    /// </summary>
-    private static (LayoutGroup? Group, bool Mixed) FindLayoutGroup(RectTransform canvas, List<RectTransform> rects)
+    /// <summary>Puts Play, the server browser entry and the line under Play on their planned boxes (moving the server browser entry out of the tile row first).</summary>
+    private static void Apply(Moved moved)
     {
-        LayoutGroup? first = null;
-        int arranged = 0;
-        foreach (RectTransform rect in rects)
+        if (moved.OnlineRect != null && moved.OnlineRect.parent.Pointer != moved.PlayParent.Pointer)
         {
-            LayoutGroup? group = null;
-            for (Transform? t = rect.parent; t != null && t.Pointer != canvas.Pointer; t = t.parent)
-            {
-                group = t.gameObject.GetComponent<LayoutGroup>();
-                if (group != null) break;
-            }
-            if (group == null) continue;
-            arranged++;
-            if (first == null) first = group;
-            else if (first.Pointer != group.Pointer) return (null, true);
+            Transform oldParent = moved.OnlineRect.parent;
+            moved.OnlineRect.SetParent(moved.PlayParent, false);
+            moved.OnlineRect.SetSiblingIndex(moved.PlayRect.GetSiblingIndex() + 1);
+            RebuildLayout(oldParent); // the tile row closes the gap
         }
-        return arranged == 0 ? (null, false) : arranged == rects.Count ? (first, false) : (null, true);
+        GameUi.PlaceOver(moved.PlayRect, moved.PlayParent, moved.Canvas, moved.PlayPlanned);
+        if (moved.OnlineRect != null) GameUi.PlaceOver(moved.OnlineRect, moved.PlayParent, moved.Canvas, moved.OnlinePlanned);
+        if (moved.DecorationRect != null) GameUi.PlaceOver(moved.DecorationRect, moved.PlayParent, moved.Canvas, moved.DecorationPlanned);
     }
 
-    /// <summary>Places every entry on its planned box, remembering where it was.</summary>
-    private static void PlaceByHand(Arranged arranged, List<RectTransform> rects, MenuPlan plan)
+    /// <summary>Makes a layout group lay out its children now (does nothing for an object that is not one).</summary>
+    private static void RebuildLayout(Transform? layoutParent)
     {
-        arranged.Rects = rects;
-        arranged.Planned = plan.Boxes;
-        arranged.Memories = rects.Select(rect => new RectMemory(rect)).ToList();
-        Apply(arranged);
-    }
-
-    /// <summary>Puts the entries where the plan says (or, for a layout group, sets the group's order and spacing again).</summary>
-    private static void Apply(Arranged arranged)
-    {
-        if (arranged.Positioning == Positioning.LayoutGroup)
-        {
-            for (int k = 0; k < arranged.ByRank.Length; k++) arranged.Rects[arranged.ByRank[k]].SetSiblingIndex(arranged.Places[k]);
-            arranged.Group!.spacing = arranged.AppliedSpacing;
-            LayoutRebuilder.ForceRebuildLayoutImmediate(GameUi.RectOf(arranged.Group)!);
-            return;
-        }
-        for (int i = 0; i < arranged.Rects.Count; i++)
-        {
-            RectTransform rect = arranged.Rects[i];
-            GameUi.PlaceOver(rect, GameUi.RectOf(rect.parent)!, arranged.Canvas, arranged.Planned[i]);
-        }
-    }
-
-    /// <summary>
-    /// The entries are arranged by one of the game's layout groups: put them in reading order (inside the places they already occupy among
-    /// their siblings) and set the group's spacing.
-    /// </summary>
-    private void ArrangeInGroup(Arranged arranged, HorizontalOrVerticalLayoutGroup group, List<MenuItem> items, List<RectTransform> rects)
-    {
-        // the group's direct children that hold the entries (an entry may sit deeper, inside a wrapper that is the group's child)
-        var slots = new List<RectTransform>();
-        foreach (RectTransform rect in rects)
-        {
-            Transform slot = rect;
-            while (slot.parent != null && slot.parent.Pointer != group.transform.Pointer) slot = slot.parent;
-            slots.Add(slot.gameObject.GetComponent<RectTransform>());
-        }
-
-        arranged.Group = group;
-        arranged.OldSpacing = group.spacing;
-        arranged.Rects = slots;
-        arranged.OldSiblingIndexes = slots.Select(slot => slot.GetSiblingIndex()).ToList();
-        arranged.Places = arranged.OldSiblingIndexes.OrderBy(index => index).ToArray();
-        arranged.ByRank = Enumerable.Range(0, items.Count).OrderBy(i => MenuLayout.Rank(KindOf(items[i]))).ThenBy(i => arranged.OldSiblingIndexes[i]).ToArray();
-        arranged.AppliedSpacing = _gap.Value;
-        Apply(arranged);
+        RectTransform? rect = GameUi.RectOf(layoutParent);
+        if (rect != null && rect.gameObject.GetComponent<LayoutGroup>() != null) LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
     }
 
     /// <summary>
@@ -489,15 +461,15 @@ internal sealed class MainMenuIntegration : IIntegration
     /// go to automatic navigation (Unity picks the nearest entry in the pressed direction). Entries that already use automatic navigation
     /// are not touched. <see cref="Undo"/> puts the old setting back.
     /// </summary>
-    private static void UseAutomaticNavigation(Arranged arranged)
+    private static void UseAutomaticNavigation(Moved moved)
     {
-        foreach (MenuItem item in arranged.Items)
+        foreach (MenuItem item in moved.Entries)
         {
             Selectable? selectable = item.gameObject.GetComponent<Selectable>();
             if (selectable == null) continue;
             Navigation navigation = selectable.navigation;
             if (navigation.mode != Navigation.Mode.Explicit) continue;
-            arranged.Navigation.Add((selectable, navigation.mode));
+            moved.Navigation.Add((selectable, navigation.mode));
             navigation.mode = Navigation.Mode.Automatic;
             selectable.navigation = navigation;
         }
@@ -505,35 +477,48 @@ internal sealed class MainMenuIntegration : IIntegration
 
     // ---- checking, holding, undoing --------------------------------------------------------------------------------------
 
-    /// <summary>Checks the result right after arranging: where the entries are, that all are fully visible, that none overlap, and (for a layout group) that they are in reading order.</summary>
-    private static void VerifyArranged(Preflight report, Arranged arranged, Box screen)
+    /// <summary>Checks the result right after the move: the entries are where they were planned, fully visible, and cover no other entry.</summary>
+    private static void VerifyMoved(Preflight report, Moved moved, Box screen)
     {
-        List<MenuItem> items = arranged.Items;
+        var placed = new List<(string Name, RectTransform Rect, Box Planned)> { ("Play", moved.PlayRect, moved.PlayPlanned) };
+        if (moved.OnlineRect != null) placed.Add(("the server browser entry", moved.OnlineRect, moved.OnlinePlanned));
         var boxes = new List<Box>();
-        report.Check("every entry is where it was planned", () =>
+        report.Check("they are where they were planned", () =>
         {
-            for (int i = 0; i < items.Count; i++) boxes.Add(GameUi.BoxIn(arranged.Canvas, GameUi.RectOf(items[i])!));
-            if (arranged.Positioning == Positioning.LayoutGroup) return (true, "the game's layout group decides the places");
-            int off = Enumerable.Range(0, boxes.Count).Count(i => !NearPlan(boxes[i], arranged.Planned[i]));
-            return (off == 0, off == 0 ? "yes" : $"{off} of {items.Count} entries are somewhere else");
+            string[] off = placed.Where(p =>
+            {
+                Box actual = GameUi.BoxIn(moved.Canvas, p.Rect);
+                boxes.Add(actual);
+                return !NearPlan(actual, p.Planned);
+            }).Select(p => p.Name).ToArray();
+            return (off.Length == 0, off.Length == 0 ? "yes" : $"elsewhere: {string.Join(", ", off)}");
         });
-        report.Check("every entry is fully visible", () =>
+        report.Check("they are fully visible", () =>
         {
             int hidden = boxes.Count(box => !ScreenGeometry.IsVisible(box, screen, Array.Empty<Box>()));
-            return (hidden == 0, hidden == 0 ? "yes" : $"{hidden} entries are outside the screen or have no size");
+            return (hidden == 0, hidden == 0 ? "yes" : $"{hidden} outside the screen or without size");
         });
-        report.Check("no entry covers another", () => (!MenuLayout.AnyOverlap(boxes), "yes"));
-        if (arranged.Positioning == Positioning.LayoutGroup)
+        report.Check("they cover no other entry", () =>
         {
-            report.Check("the entries read in order", () =>
-            {
-                MenuFlow flow = arranged.Group!.TryCast<HorizontalLayoutGroup>() != null ? MenuFlow.Row : MenuFlow.Column;
-                int[] ranks = Enumerable.Range(0, items.Count)
-                    .OrderBy(i => flow == MenuFlow.Row ? boxes[i].X : -boxes[i].Top)
-                    .Select(i => MenuLayout.Rank(KindOf(items[i]))).ToArray();
-                return (ranks.SequenceEqual(ranks.OrderBy(rank => rank)), "Play first, the server browser next");
-            });
-        }
+            var movedPointers = placed.Select(p => p.Rect.Pointer).ToHashSet();
+            List<Box> others = moved.Entries
+                .Select(item => GameUi.RectOf(item)).Where(rect => rect != null && !movedPointers.Contains(rect.Pointer))
+                .Select(rect => GameUi.BoxIn(moved.Canvas, rect!)).ToList();
+            int covered = boxes.Count(box => others.Any(other => Overlaps(box, other)));
+            bool each = !MenuOverlap(boxes);
+            return (covered == 0 && each, covered == 0 && each ? "yes" : "an entry is covered");
+        });
+    }
+
+    private static bool Overlaps(Box a, Box b) =>
+        !(a.Right <= b.X + 0.5f || b.Right <= a.X + 0.5f || a.Top <= b.Y + 0.5f || b.Top <= a.Y + 0.5f);
+
+    private static bool MenuOverlap(IReadOnlyList<Box> boxes)
+    {
+        for (int i = 0; i < boxes.Count; i++)
+            for (int j = i + 1; j < boxes.Count; j++)
+                if (Overlaps(boxes[i], boxes[j])) return true;
+        return false;
     }
 
     /// <summary>
@@ -546,61 +531,55 @@ internal sealed class MainMenuIntegration : IIntegration
         return Math.Abs(actual.CenterX - planned.CenterX) <= tolerance && Math.Abs(actual.CenterY - planned.CenterY) <= tolerance;
     }
 
-    /// <summary>True while every entry is still where it was put (the game may move them again: an animation, the screen being reset).</summary>
-    private static bool Holds(Arranged arranged)
+    /// <summary>True while every moved entry is still where it was put (the game may move them again: an animation, the screen being reset).</summary>
+    private static bool Holds(Moved moved)
     {
-        if (arranged.Items.Any(item => item == null)) return false;
-        if (arranged.Positioning == Positioning.LayoutGroup)
-        {
-            if (arranged.Group == null || Math.Abs(arranged.Group.spacing - arranged.AppliedSpacing) > 0.01f) return false;
-            int[] ranksBySibling = Enumerable.Range(0, arranged.Rects.Count)
-                .OrderBy(i => arranged.Rects[i].GetSiblingIndex())
-                .Select(i => MenuLayout.Rank(KindOf(arranged.Items[i]))).ToArray();
-            return ranksBySibling.SequenceEqual(ranksBySibling.OrderBy(rank => rank));
-        }
-        for (int i = 0; i < arranged.Items.Count; i++)
-            if (!NearPlan(GameUi.BoxIn(arranged.Canvas, GameUi.RectOf(arranged.Items[i])!), arranged.Planned[i])) return false;
+        if (moved.PlayRect == null || (moved.OnlineRect == null && moved.OnlineOldParent != null)) return false;
+        if (!NearPlan(GameUi.BoxIn(moved.Canvas, moved.PlayRect), moved.PlayPlanned)) return false;
+        if (moved.OnlineRect != null
+            && (moved.OnlineRect.parent.Pointer != moved.PlayParent.Pointer || !NearPlan(GameUi.BoxIn(moved.Canvas, moved.OnlineRect), moved.OnlinePlanned))) return false;
+        if (moved.DecorationRect != null && !NearPlan(GameUi.BoxIn(moved.Canvas, moved.DecorationRect), moved.DecorationPlanned)) return false;
         return true;
     }
 
     /// <summary>The game moved the entries: put them back where they were planned, a few times; after that the change is undone for good.</summary>
-    private void Reapply(Arranged arranged)
+    private void Reapply(Moved moved)
     {
-        arranged.Reapplies++;
-        if (arranged.Reapplies <= ReappliesBeforeGivingUp)
+        moved.Reapplies++;
+        if (moved.Reapplies <= ReappliesBeforeGivingUp)
         {
-            Apply(arranged);
-            Plugin.LogSource.LogWarning($"MAINMENU_MOVED — the game moved the menu entries; they were put back (time {arranged.Reapplies} of {ReappliesBeforeGivingUp}).");
+            Apply(moved);
+            Plugin.LogSource.LogWarning($"MAINMENU_MOVED — the game moved the menu entries; they were put back (time {moved.Reapplies} of {ReappliesBeforeGivingUp}).");
             return;
         }
-        Undo(arranged);
-        _arranged = null;
+        Undo(moved);
+        _moved = null;
         _failedOpenings = MaxFailedOpenings;
         Plugin.LogSource.LogError("MAINMENU_OVERRIDDEN — the game keeps moving the menu entries (an animation or a reset), so the change was undone and the menu is left as designed. The original layout is in carx.modmanager.ui-mainmenu.txt.");
         IntegrationHealth.Report(Name, "the game keeps moving the entries");
     }
 
-    private static void Undo(Arranged? arranged)
+    private static void Undo(Moved? moved)
     {
-        if (arranged == null) return;
-        foreach ((Selectable selectable, Navigation.Mode mode) in arranged.Navigation)
+        if (moved == null) return;
+        foreach ((Selectable selectable, Navigation.Mode mode) in moved.Navigation)
         {
             if (selectable == null) continue;
             Navigation navigation = selectable.navigation;
             navigation.mode = mode;
             selectable.navigation = navigation;
         }
-        arranged.Navigation.Clear();
+        moved.Navigation.Clear();
 
-        if (arranged.Positioning == Positioning.ByHand)
+        if (moved.OnlineRect != null && moved.OnlineOldParent != null && moved.OnlineRect.parent.Pointer != moved.OnlineOldParent.Pointer)
         {
-            foreach (RectMemory memory in arranged.Memories) memory.Restore();
-            return;
+            moved.OnlineRect.SetParent(moved.OnlineOldParent, false);
+            moved.OnlineRect.SetSiblingIndex(moved.OnlineOldIndex);
         }
-        if (arranged.Group != null) arranged.Group.spacing = arranged.OldSpacing;
-        foreach (int i in Enumerable.Range(0, arranged.Rects.Count).OrderBy(i => arranged.OldSiblingIndexes[i]))
-            if (arranged.Rects[i] != null) arranged.Rects[i].SetSiblingIndex(arranged.OldSiblingIndexes[i]);
-        if (arranged.Group != null) LayoutRebuilder.ForceRebuildLayoutImmediate(GameUi.RectOf(arranged.Group)!);
+        moved.OnlineMemory?.Restore();
+        moved.PlayMemory.Restore();
+        moved.DecorationMemory?.Restore();
+        RebuildLayout(moved.OnlineOldParent);
     }
 
     private static string Describe(Box box) => $"({box.X:0},{box.Y:0},{box.Width:0}x{box.Height:0})";

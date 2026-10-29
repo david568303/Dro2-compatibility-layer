@@ -30,11 +30,19 @@ screens. They describe structure, not looks: the layout and styling live in Unit
 
 ## Main menu
 
-- `UIMainMenuContext` (a `BaseContext`; it has no `OnActivated` of its own) holds one `Button` field per entry: `m_playButton`,
-  `m_testDriveButton`, `m_workshopButton`, `m_storeButton`, `m_garageButton`, `m_settingsButton`, `m_infoButton`,
-  `m_creditsButton`, `m_modsButton`, `m_quitButton`. The server browser (`OnlineMenu`) and Discord entries have no field; every entry
-  carries a `MenuItem` component whose `Type` is a `MenuItemType` (Play, TestDrive, Workshop, Store, Garage, Settings, Info, Credits,
-  Quit, OnlineMenu, Discord, Mods). The controller (`UIMainMenuContextController<T>`) reacts to `menuButtonPressedEvent(MenuItem)`.
+From the layout the mod manager wrote (`carx.modmanager.ui-mainmenu.txt`), in the units of a 1920 x 1080 root:
+
+- `UIMainMenu(Clone)` (`UIMainMenuContext`, a `BaseContext` that has no `OnActivated` of its own, so the mod manager looks the screen
+  up instead of hooking it) holds, directly: `Start` (the big **Play** button, 401 x 100 at the bottom left, placed by hand), a thin
+  `Separator` image under it, `MenuItems`, `QuitButton` (60 x 60 at the bottom right), `SmallMenuItems`, and a `CarXLogo` object (with a
+  mask) that also contains a hidden second Play entry.
+- `MenuItems` is a **horizontal layout group**, content-sized, holding `OnlineToggle` (the globe tile, 76 x 114, the server
+  browser), `TestDriveButton` (320 x 114), `WorkshopButton`, `GarageButton`, `StoreButton`, `ModsButton` (240 x 114 each) and two
+  thin `Separator`s. `SmallMenuItems` is a second horizontal layout group with `SettingsButton`, `InfoButton`, `DiscordButton`.
+- Every entry is a `Button` with `MenuItem` (whose `Type` is a `MenuItemType`: Play, TestDrive, Workshop, Store, Garage, Settings,
+  Info, Credits, Quit, OnlineMenu, Discord, Mods), `Animator`, `UIAnimateBySelect`, sounds, and children `Default` / `Selected` /
+  `Pressed` (stacked images switched by bindings). The context also holds one `Button` field per entry except the server browser
+  and Discord. The controller (`UIMainMenuContextController<T>`) reacts to `menuButtonPressedEvent(MenuItem)`.
 - Pressing Play opens the game modes screen (`UIRaceGameModesContext`, one `UIRaceGameModeButton` per mode: career, free ride, XDS
   training, duels, the multiplayer lobby = server browser, multiplayer duels, top 32 variants). *Not touched by the mod manager.*
 

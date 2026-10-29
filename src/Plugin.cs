@@ -11,7 +11,7 @@ namespace CarXModManager;
 /// <summary>
 /// The compatibility layer's BepInEx plugin. It shows the always-on status line ("N mods loaded"), carries the
 /// shared API other mods build on (<see cref="Api.GameHooks"/>), and adds integrations with the game's own screens
-/// (a tidier main menu, a better server browser and map picker, built into the game's own screens, see <see cref="IntegrationHost"/>).
+/// (a main menu with Play at the right, a better server browser and map picker, built into the game's own screens, see <see cref="IntegrationHost"/>).
 /// A mod that uses the API declares <c>[BepInDependency(CarXModManager.Plugin.PluginGuid)]</c> so BepInEx loads this
 /// plugin first. See docs/API.md in the repository.
 /// </summary>

@@ -220,93 +220,38 @@ Check(TextEditing.Backspace("abc") == "ab" && TextEditing.Backspace("") == "", "
     Check(problems.Version == before + 1 && !problems.Any && problems.Describe() == "", "problems: clearing something that is not listed changes nothing; when all are cleared the line is as before");
 }
 
-// ---- menu layout (the main menu's clean arrangement) --------------------------------------------------------------------
+// ---- main menu: Play at the right, the server browser entry on its left (numbers are from the game's own layout dump) ---------
 {
-    Check(MenuLayout.Rank("Play") < MenuLayout.Rank("OnlineMenu") && MenuLayout.Rank("OnlineMenu") < MenuLayout.Rank("Garage")
-        && MenuLayout.Rank("Garage") < MenuLayout.Rank("Quit") && MenuLayout.Rank("SomethingNew") > MenuLayout.Rank("Quit"),
-        "menu: Play comes first, the server browser next, Quit last, unknown entries after all known ones");
-
-    var inARow = new[] { new Box(0f, 0f, 100f, 40f), new Box(300f, 5f, 100f, 40f), new Box(600f, -5f, 100f, 40f) };
-    var inAColumn = new[] { new Box(0f, 0f, 100f, 40f), new Box(10f, -200f, 100f, 40f), new Box(-5f, -400f, 100f, 40f) };
-    Check(MenuLayout.DetectFlow(inARow) == MenuFlow.Row && MenuLayout.DetectFlow(inAColumn) == MenuFlow.Column && MenuLayout.DetectFlow(new[] { inARow[0] }) == MenuFlow.Column,
-        "menu: entries spread sideways are a row, spread vertically a column, a single entry a column");
-
-    var area = new Box(-960f, -540f, 1920f, 1080f);
-
-    // the game's order is wrong (the server browser left of Play, Quit in the middle): the plan fixes order, gaps and alignment
-    var scattered = new[]
+    var play = new Box(-920f, -327f, 401f, 100f);            // "Start", the big PLAY button at the bottom left
+    var online = new Box(-920f, -450f, 76f, 114f);           // "OnlineToggle", the globe tile at the left end of the tile row
+    var usable = new Box(-936f, -516f, 1872f, 1032f);        // the 1920 x 1080 menu root with a 24 unit margin
+    var others = new[]
     {
-        new MenuEntry("OnlineMenu", new Box(-700f, -300f, 200f, 60f)),
-        new MenuEntry("Play", new Box(-300f, -310f, 240f, 80f)),
-        new MenuEntry("Quit", new Box(0f, -290f, 150f, 50f)),
-        new MenuEntry("Garage", new Box(300f, -305f, 200f, 60f)),
+        new Box(-839f, -450f, 320f, 114f), new Box(-507f, -450f, 240f, 114f), new Box(-262f, -450f, 240f, 114f), // test drive, workshop, garage
+        new Box(-10f, -450f, 240f, 114f), new Box(235f, -450f, 240f, 114f),                                      // store, mods
+        new Box(625f, -450f, 60f, 60f), new Box(690f, -450f, 60f, 60f), new Box(755f, -450f, 60f, 60f),          // settings, info, discord
+        new Box(865f, -450f, 60f, 60f),                                                                           // quit
     };
-    MenuPlan row = MenuLayout.Plan(scattered, area, MenuFlow.Row, 20f);
-    Check(row.Fits && row.Lines == 1 && row.Boxes.Length == 4, "menu: a row of four fits in one line");
-    // reading order is Play, OnlineMenu, Garage, Quit: indices 1, 0, 3, 2
-    Check(row.Boxes[1].X < row.Boxes[0].X && row.Boxes[0].X < row.Boxes[3].X && row.Boxes[3].X < row.Boxes[2].X, "menu: Play first, then the server browser, then Garage, Quit last");
-    Check(Math.Abs(row.Boxes[1].Right + 20f - row.Boxes[0].X) < 0.01f && Math.Abs(row.Boxes[0].Right + 20f - row.Boxes[3].X) < 0.01f && Math.Abs(row.Boxes[3].Right + 20f - row.Boxes[2].X) < 0.01f,
-        "menu: the same gap between every pair of neighbours");
-    Check(row.Boxes.All(box => Math.Abs(box.CenterY - row.Boxes[0].CenterY) < 0.01f), "menu: a row shares one centre line");
-    Check(row.Boxes.Select((box, i) => (box.Width, box.Height)).SequenceEqual(scattered.Select(entry => (entry.Box.Width, entry.Box.Height))), "menu: the sizes the game designed are kept");
-    Check(!MenuLayout.AnyOverlap(row.Boxes) && row.Boxes.All(box => area.Contains(box)), "menu: nothing overlaps and everything is inside the area");
-    Box before = MenuLayout.Union(scattered.Select(entry => entry.Box)), after = MenuLayout.Union(row.Boxes);
-    Check(Math.Abs(before.CenterX - after.CenterX) < 0.01f && Math.Abs(before.CenterY - after.CenterY) < 0.01f, "menu: the group stays centred where the menu was");
+    PairPlan plan = PlayPairLayout.PlaceAtRight(play, online, 925f, 12f, usable, others);
+    Check(plan.Fits, "play pair: the real menu has room for Play and the server browser entry at the right");
+    Check(plan.Play == new Box(524f, -327f, 401f, 100f), "play pair: Play keeps its size and line up with the menu's right edge (Quit's right edge)");
+    Check(plan.Online == new Box(412f, -327f, 100f, 100f), "play pair: the server browser entry is a square as tall as Play, 12 units to its left, on the same line");
+    Check(plan.Play.Y == play.Y && plan.Online!.Value.Y == play.Y, "play pair: both stay on the line Play was on");
+    PairPlan alone = PlayPairLayout.PlaceAtRight(play, null, 925f, 12f, usable, others);
+    Check(alone.Fits && alone.Online == null && alone.Play == plan.Play, "play pair: without a server browser entry only Play moves");
+    PairPlan crowded = PlayPairLayout.PlaceAtRight(play, online, 925f, 12f, usable, others.Append(new Box(500f, -300f, 200f, 50f)).ToArray());
+    Check(!crowded.Fits && crowded.Detail.Contains("cover another"), "play pair: a place that is taken is refused, and the reason says so");
+    PairPlan outside = PlayPairLayout.PlaceAtRight(play, online, 1200f, 12f, usable, others);
+    Check(!outside.Fits && outside.Detail.Contains("outside the usable area"), "play pair: a right edge outside the usable area is refused");
+    PairPlan squeezed = PlayPairLayout.PlaceAtRight(play, online, 925f, 12f, new Box(480f, -516f, 456f, 1032f), Array.Empty<Box>());
+    Check(!squeezed.Fits, "play pair: if the server browser entry would not fit beside Play it is refused too");
 
-    var stacked = new[]
-    {
-        new MenuEntry("Settings", new Box(-900f, 100f, 300f, 50f)),
-        new MenuEntry("Play", new Box(-880f, -100f, 340f, 90f)),
-        new MenuEntry("OnlineMenu", new Box(-905f, -400f, 280f, 50f)),
-    };
-    MenuPlan column = MenuLayout.Plan(stacked, area, MenuFlow.Column, 16f);
-    Check(column.Fits && column.Boxes.All(box => Math.Abs(box.X - column.Boxes[0].X) < 0.01f), "menu: a column shares one left edge");
-    Check(column.Boxes[1].Y > column.Boxes[2].Y && column.Boxes[2].Y > column.Boxes[0].Y, "menu: top to bottom is Play, the server browser, Settings");
-    Check(Math.Abs((column.Boxes[1].Y - 16f) - column.Boxes[2].Top) < 0.01f && Math.Abs((column.Boxes[2].Y - 16f) - column.Boxes[0].Top) < 0.01f, "menu: equal gaps in a column");
-    Check(!MenuLayout.AnyOverlap(column.Boxes) && column.Boxes.All(box => area.Contains(box)), "menu: the column overlaps nothing and stays inside the area");
-
-    // too long for one line: wraps, keeping the order
-    var many = Enumerable.Range(0, 6).Select(i => new MenuEntry(new[] { "Play", "OnlineMenu", "Garage", "TestDrive", "Workshop", "Store" }[i], new Box(i * 50f, 0f, 400f, 60f))).ToArray();
-    MenuPlan wrapped = MenuLayout.Plan(many, new Box(0f, 0f, 1000f, 500f), MenuFlow.Row, 20f);
-    Check(wrapped.Fits && wrapped.Lines == 3, "menu: six entries 400 wide do not fit one 1000-wide line and wrap into three rows of two");
-    Check(wrapped.Boxes[0].Y > wrapped.Boxes[2].Y && wrapped.Boxes[2].Y > wrapped.Boxes[4].Y && Math.Abs(wrapped.Boxes[0].Y - wrapped.Boxes[1].Y) < 0.01f, "menu: wrapped rows read top to bottom, left to right");
-    Check(!MenuLayout.AnyOverlap(wrapped.Boxes) && wrapped.Boxes.All(box => new Box(0f, 0f, 1000f, 500f).Contains(box)), "menu: the wrapped menu overlaps nothing and fits");
-
-    // a slightly smaller gap saves a line
-    var three = Enumerable.Range(0, 3).Select(i => new MenuEntry(new[] { "Play", "OnlineMenu", "Garage" }[i], new Box(i * 400f, 0f, 300f, 60f))).ToArray();
-    MenuPlan tighter = MenuLayout.Plan(three, new Box(0f, 0f, 920f, 200f), MenuFlow.Row, 20f);
-    Check(tighter.Fits && tighter.Lines == 1 && Math.Abs(tighter.Gap - 10f) < 0.01f, "menu: a smaller gap is used when that keeps the menu in one line");
-
-    // a group at the edge is moved inside
-    var atEdge = new[] { new MenuEntry("Play", new Box(-960f, 0f, 200f, 60f)), new MenuEntry("Garage", new Box(-960f, -100f, 200f, 60f)) };
-    MenuPlan nudged = MenuLayout.Plan(atEdge, new Box(-936f, -516f, 1872f, 1032f), MenuFlow.Column, 20f);
-    Check(nudged.Fits && nudged.Boxes.All(box => box.X >= -936f - 0.01f), "menu: a group that would stick out of the area is moved inside");
-
-    // can not fit
-    MenuPlan hopeless = MenuLayout.Plan(new[] { new MenuEntry("Play", new Box(0f, 0f, 3000f, 60f)) }, area, MenuFlow.Row, 20f);
-    Check(!hopeless.Fits && hopeless.Detail.Contains("'Play'") && hopeless.Boxes.Length == 0, "menu: an entry bigger than the area is reported, not forced");
-    MenuPlan tooTall = MenuLayout.Plan(Enumerable.Range(0, 30).Select(i => new MenuEntry("Play", new Box(0f, i * 10f, 200f, 100f))).ToArray(), new Box(0f, 0f, 400f, 300f), MenuFlow.Column, 10f);
-    Check(!tooTall.Fits, "menu: a menu that needs more room than there is does not fit");
-    Check(!MenuLayout.Plan(Array.Empty<MenuEntry>(), area, MenuFlow.Row, 10f).Fits, "menu: no entries is not a plan");
-
-    // many random menus: never overlapping, always inside, always in reading order
-    var random = new Random(7);
-    bool allSound = true;
-    for (int round = 0; round < 200 && allSound; round++)
-    {
-        int count = random.Next(2, 13);
-        var kinds = new[] { "Play", "OnlineMenu", "Garage", "TestDrive", "Workshop", "Store", "Mods", "Settings", "Info", "Credits", "Discord", "Quit" };
-        var entries = Enumerable.Range(0, count).Select(i => new MenuEntry(kinds[i], new Box(random.Next(-900, 700), random.Next(-500, 400), random.Next(80, 360), random.Next(30, 120)))).OrderBy(_ => random.Next()).ToArray();
-        MenuFlow flow = random.Next(2) == 0 ? MenuFlow.Row : MenuFlow.Column;
-        MenuPlan plan = MenuLayout.Plan(entries, area, flow, random.Next(4, 40));
-        if (!plan.Fits) continue;
-        allSound &= !MenuLayout.AnyOverlap(plan.Boxes) && plan.Boxes.All(box => area.Contains(box));
-        // reading order: sorting the boxes by line then position gives ascending ranks
-        var ranked = Enumerable.Range(0, count).OrderBy(i => flow == MenuFlow.Row ? -Math.Round(plan.Boxes[i].CenterY) : Math.Round(plan.Boxes[i].X))
-            .ThenBy(i => flow == MenuFlow.Row ? plan.Boxes[i].X : -plan.Boxes[i].Top).Select(i => MenuLayout.Rank(entries[i].Kind)).ToArray();
-        allSound &= ranked.SequenceEqual(ranked.OrderBy(rank => rank));
-    }
-    Check(allSound, "menu: 200 random menus never overlap, stay inside the area and read in order");
+    var separator = new Box(-920f, -332f, 400f, 2f);
+    Check(PlayPairLayout.IsUnderline(separator, play), "play pair: the thin line the designer put under Play is recognised");
+    Check(!PlayPairLayout.IsUnderline(new Box(-920f, -400f, 400f, 2f), play) && !PlayPairLayout.IsUnderline(new Box(-920f, -332f, 400f, 40f), play)
+        && !PlayPairLayout.IsUnderline(new Box(-100f, -332f, 400f, 2f), play) && !PlayPairLayout.IsUnderline(new Box(-920f, -332f, 20f, 2f), play),
+        "play pair: a line far below, a thick box, a line elsewhere or a tiny mark is not an underline");
+    Check(PlayPairLayout.MoveWith(separator, play, plan.Play) == new Box(524f, -332f, 400f, 2f), "play pair: the underline keeps its place relative to Play when Play moves");
 }
 
 // ---- placement geometry ------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Compatibility Layer
 
-Shared base for CarX Drift Racing Online 2 mods. Shows a "N mods loaded" line in the bottom-left corner of the screen, and upgrades the game's screens: a tidier main menu, and a server browser and map selection with search, filters and a map list.
+Shared base for CarX Drift Racing Online 2 mods. Shows a "N mods loaded" line in the bottom-left corner of the screen, and upgrades the game's screens: Play at the right of the main menu with the server browser next to it, and a server browser and map selection with search, filters and a map list.
 
 Needs BepInEx 6 (IL2CPP) already installed in the game.
 

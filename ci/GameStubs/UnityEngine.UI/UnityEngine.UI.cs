@@ -42,15 +42,6 @@ namespace UnityEngine.UI
         public global::System.Boolean raycastTarget { get { throw null!; } set { throw null!; } }
         public global::UnityEngine.RectTransform rectTransform { get { throw null!; } }
     }
-    public class HorizontalLayoutGroup : global::UnityEngine.UI.HorizontalOrVerticalLayoutGroup
-    {
-        public HorizontalLayoutGroup(System.IntPtr pointer) : base(pointer) { }
-    }
-    public class HorizontalOrVerticalLayoutGroup : global::UnityEngine.UI.LayoutGroup
-    {
-        public HorizontalOrVerticalLayoutGroup(System.IntPtr pointer) : base(pointer) { }
-        public global::System.Single spacing { get { throw null!; } set { throw null!; } }
-    }
     public class Image : global::UnityEngine.UI.MaskableGraphic
     {
         public enum Type : int
