@@ -32,18 +32,10 @@ here so each mod doesn't re-implement them:
   game method found by name at run time (no compile-time dependency on the game's types). Every failure (type
   renamed, method changed, patch refused) is logged as an **Error under the calling mod's own log source**, so the
   mod shows up in the status line as "with errors" and a game update that moves a method is visible at once.
-- `TextureTools.TryRead` / `TryWriteInPlace` copy the pixels of a readable `Texture2D` out as RGBA bytes and write
-  processed pixels back (SetPixels32 + Apply), so the processing in between can be plain managed code.
-- `TextureReplacer` hands the game a processed version of a texture *before it first uses it*, so there is no frame
-  showing the original. Call `Replace(texture)` from a prefix on the game method that receives the texture and assign
-  the result back to the argument. Textures with Read/Write disabled are copied on the GPU first (the original is
-  left alone); results are cached per texture and old copies are destroyed, so reopening previews does not leak.
-  `TextureReplacer` can also keep results on disk (`cache:` argument, a `TextureCacheOptions`): finished textures are
-  stored under a hash (SHA-256) of the source pixels plus a settings key, so a texture that did not change is never
-  processed twice, even across game restarts. Entries are compressed, written atomically and trimmed least-recently-used
-  to a size limit.
-- `MainThread.Post(name, work)` runs work on Unity's main thread from any thread, so heavy processing can run in the
-  background and only the Unity-facing part runs on the main thread.
+
+  A prefix patched this way runs synchronously, before the game uses the arguments, so a mod can swap an argument
+  (for example a texture) with no frame in which the original shows. The type is looked up in the named interop
+  assembly first, so a patch is applied as soon as the plugin loads rather than after the game has used the method.
 
 ## Download
 
