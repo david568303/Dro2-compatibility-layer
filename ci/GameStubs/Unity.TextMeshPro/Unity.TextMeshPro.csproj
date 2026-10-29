@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Unity.TextMeshPro</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../UnityEngine.CoreModule/UnityEngine.CoreModule.csproj" />
+    <ProjectReference Include="../UnityEngine.UI/UnityEngine.UI.csproj" />
+  </ItemGroup>
+</Project>

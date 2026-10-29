@@ -147,40 +147,103 @@ Directory.Delete(Path.GetDirectoryName(favoritesPath)!, true);
     Check(loader.Tick(5.2f, true, 30) == PageAction.Request, "paging: Reset forgets everything (no gap wait after a reset)");
 }
 
-// ---- panel placement and dragging ----------------------------------------------------------------------------------
+// ---- text editing ----------------------------------------------------------------------------------------------------
+Check(TextEditing.Insert("ab", 'c') == "abc", "typing: a printable character is appended");
+Check(TextEditing.Insert("ab", ' ') == "ab ", "typing: a space is text too");
+Check(TextEditing.Insert("ab", '\b') == "ab" && TextEditing.Insert("ab", '\r') == "ab" && TextEditing.Insert("ab", '\u007f') == "ab", "typing: control characters (Backspace, Enter, Delete) are not text");
+Check(TextEditing.Insert("ab", 'é') == "abé", "typing: accented letters are accepted");
+Check(TextEditing.Insert(new string('x', TextEditing.MaxLength), 'y') == new string('x', TextEditing.MaxLength), "typing: a full box takes no more");
+Check(TextEditing.Backspace("abc") == "ab" && TextEditing.Backspace("") == "", "typing: Backspace removes the last character and is safe on empty text");
 {
-    const float W = 100f, H = 50f, SW = 1920f, SH = 1080f;
-    (float X, float Y) At(PanelAnchor a, float ox, float oy) => new PanelPlacement(a, ox, oy).Position(W, H, SW, SH);
-    Check(At(PanelAnchor.TopLeft, 10, 20) == (10, 20), "placement: top-left");
-    Check(At(PanelAnchor.TopRight, 10, 20) == (1810, 20), "placement: top-right is measured from the right edge");
-    Check(At(PanelAnchor.BottomLeft, 10, 20) == (10, 1010), "placement: bottom-left is measured from the bottom edge");
-    Check(At(PanelAnchor.BottomRight, 10, 20) == (1810, 1010), "placement: bottom-right");
-    Check(At(PanelAnchor.TopCenter, 30, 20) == (940, 20), "placement: top-centre offsets from the middle (positive = right)");
-    Check(At(PanelAnchor.BottomCenter, 0, 20) == (910, 1010), "placement: bottom-centre");
+    var repeat = new KeyRepeat(delaySeconds: 0.5f, intervalSeconds: 0.1f);
+    Check(repeat.Update(true, 0f) == 1, "key repeat: acts once when the key goes down");
+    Check(repeat.Update(true, 0.3f) == 0, "key repeat: nothing while the delay has not passed");
+    Check(repeat.Update(true, 0.5f) == 1, "key repeat: starts repeating after the delay");
+    Check(repeat.Update(true, 0.55f) == 0, "key repeat: and waits for the interval");
+    Check(repeat.Update(true, 0.85f) == 3, "key repeat: catches up on the repeats that were due (0.6, 0.7, 0.8)");
+    Check(repeat.Update(false, 0.9f) == 0, "key repeat: stops when released");
+    Check(repeat.Update(true, 1.0f) == 1, "key repeat: a new press acts at once again");
+    var stalled = new KeyRepeat(0.5f, 0.1f);
+    stalled.Update(true, 0f);
+    Check(stalled.Update(true, 100f) <= 4, "key repeat: a long stall gives only a few catch-up repeats");
+    Check(stalled.Update(true, 100.05f) == 0, "key repeat: and then resumes at the normal pace");
+}
+{
+    var choice = new KeySourceLock();
+    Check(choice.Owner == KeySource.None, "key source: none is chosen before any event");
+    Check(choice.Accept(KeySource.InputSystem), "key source: the first source to report is used");
+    Check(!choice.Accept(KeySource.Imgui), "key source: and the other one is then ignored (no letter is typed twice)");
+    Check(choice.Accept(KeySource.InputSystem) && choice.Owner == KeySource.InputSystem, "key source: the chosen one keeps being used");
+    var other = new KeySourceLock();
+    Check(other.Accept(KeySource.Imgui) && !other.Accept(KeySource.InputSystem), "key source: if only IMGUI reports, IMGUI is used");
+}
 
-    PanelPlacement Moved(PanelAnchor a, float ox, float oy, float dx, float dy) => new PanelPlacement(a, ox, oy).MovedBy(dx, dy, W, H, SW, SH);
-    Check(Moved(PanelAnchor.TopLeft, 10, 20, 5, 7) == new PanelPlacement(PanelAnchor.TopLeft, 15, 27), "drag: top-left follows the pointer");
-    Check(Moved(PanelAnchor.TopRight, 10, 20, 5, 7) == new PanelPlacement(PanelAnchor.TopRight, 5, 27), "drag: moving right shrinks the offset from the right edge");
-    Check(Moved(PanelAnchor.BottomLeft, 10, 20, 5, 7) == new PanelPlacement(PanelAnchor.BottomLeft, 15, 13), "drag: moving down shrinks the offset from the bottom edge");
-    Check(Moved(PanelAnchor.BottomRight, 10, 20, 5, 7) == new PanelPlacement(PanelAnchor.BottomRight, 5, 13), "drag: bottom-right");
-    Check(Moved(PanelAnchor.TopCenter, 30, 20, 5, 7) == new PanelPlacement(PanelAnchor.TopCenter, 35, 27), "drag: top-centre");
-    // the panel's position on screen must follow the pointer for every anchor
-    foreach (PanelAnchor anchor in Enum.GetValues<PanelAnchor>())
-    {
-        var start = new PanelPlacement(anchor, 40, 60);
-        (float x0, float y0) = start.Position(W, H, SW, SH);
-        (float x1, float y1) = start.MovedBy(25, -15, W, H, SW, SH).Position(W, H, SW, SH);
-        Check(x1 == x0 + 25 && y1 == y0 - 15, $"drag: the panel moves exactly with the pointer ({anchor})");
-    }
-    // clamping keeps the panel on screen
-    var clampedLeft = Moved(PanelAnchor.TopLeft, 10, 20, -500, -500);
-    Check(clampedLeft.Position(W, H, SW, SH) == (0f, 0f), "drag: cannot leave through the top-left");
-    var clampedRight = Moved(PanelAnchor.TopRight, 10, 20, 5000, 5000);
-    Check(clampedRight.Position(W, H, SW, SH) == (SW - W, SH - H), "drag: cannot leave through the bottom-right");
-    var clampedCenter = Moved(PanelAnchor.TopCenter, 0, 20, 9999, 0);
-    Check(clampedCenter.Position(W, H, SW, SH).X == SW - W, "drag: a centred panel stops at the right edge");
-    var tiny = new PanelPlacement(PanelAnchor.TopLeft, 0, 0).MovedBy(10, 10, 3000f, 2000f, SW, SH);
-    Check(tiny.Position(3000f, 2000f, SW, SH) == (0f, 0f), "drag: a panel bigger than the screen sits at the corner");
+// ---- preflight checklist ---------------------------------------------------------------------------------------------
+{
+    var none = new Preflight();
+    Check(none.Passed && none.FailedCount == 0 && none.Describe() == "no checks were run", "preflight: with no checks it passes and says so");
+
+    var good = new Preflight();
+    good.Check("the room list", true, "1010 x 640");
+    good.Check("a button to copy the look from", () => (true, "'Find room'"));
+    Check(good.Passed && good.Results.Count == 2, "preflight: all checks passed");
+    Check(good.Describe() == "2 of 2 checks passed: the room list (1010 x 640); a button to copy the look from ('Find room')", "preflight: the log line lists what was found");
+
+    var bad = new Preflight();
+    bad.Check("the room list", true, "1010 x 640");
+    bad.Check("the label", false, "no text under the button");
+    bad.Check("the space", () => throw new InvalidOperationException("the object was destroyed"));
+    Check(!bad.Passed && bad.FailedCount == 2, "preflight: a failed check, and one that threw, both fail it");
+    Check(bad.Results[2] == new CheckResult("the space", false, "InvalidOperationException: the object was destroyed"), "preflight: an exception becomes the failure detail instead of escaping");
+    Check(bad.Describe() == "2 of 3 checks failed: the label (no text under the button); the space (InvalidOperationException: the object was destroyed). Passed: the room list.",
+        "preflight: the log line names every failed check, then the passed ones");
+    Check(new Preflight().Check("x", false) == false && new Preflight().Check("y", true), "preflight: Check returns whether it passed, so checks chain");
+}
+
+// ---- problem list (what the status line shows about the mod manager itself) -----------------------------------------------
+{
+    var problems = new ProblemList();
+    Check(!problems.Any && problems.Describe() == "" && problems.Version == 0, "problems: none to begin with, the line is unchanged");
+    problems.Report("TrackPicker", "checks failed");
+    problems.Report("ServerBrowser", "could not be installed");
+    Check(problems.Any && problems.Describe() == "mod manager: ServerBrowser, TrackPicker not working (see log)", "problems: names are listed in order, with a pointer to the log");
+    int version = problems.Version;
+    problems.Report("TrackPicker", "checks failed");
+    Check(problems.Version == version, "problems: reporting the same thing again changes nothing");
+    problems.Report("TrackPicker", "stopped after errors");
+    Check(problems.Version == version + 1 && problems.ReasonFor("TrackPicker") == "stopped after errors", "problems: a new reason is a change");
+    problems.Clear("ServerBrowser");
+    Check(problems.Describe() == "mod manager: TrackPicker not working (see log)" && problems.ReasonFor("ServerBrowser") == null, "problems: a part that works again disappears from the line");
+    int before = problems.Version;
+    problems.Clear("ServerBrowser");
+    problems.Clear("TrackPicker");
+    Check(problems.Version == before + 1 && !problems.Any && problems.Describe() == "", "problems: clearing something that is not listed changes nothing; when all are cleared the line is as before");
+}
+
+// ---- placement geometry ------------------------------------------------------------------------------------------------
+{
+    var screen = new Box(0f, 0f, 1920f, 1080f);
+    var selector = new Box(100f, 500f, 500f, 40f);
+    Box right = ScreenGeometry.Beside(selector, Side.Right, 120f, 36f, 8f);
+    Check(right == new Box(608f, 502f, 120f, 36f), "geometry: a control beside the widget is centred on its height, past the gap");
+    Box left = ScreenGeometry.Beside(selector, Side.Left, 120f, 36f, 8f);
+    Check(left == new Box(-28f, 502f, 120f, 36f), "geometry: and on the left side likewise");
+    Check(ScreenGeometry.IsVisible(right, screen, Array.Empty<Box>()), "geometry: a control on the screen is visible");
+    Check(!ScreenGeometry.IsVisible(left, screen, Array.Empty<Box>()), "geometry: a control past the screen edge is not visible");
+    Check(!ScreenGeometry.IsVisible(right, screen, new[] { new Box(0f, 0f, 700f, 1080f) }), "geometry: a control cut off by a mask is not visible");
+    Check(ScreenGeometry.IsVisible(right, screen, new[] { new Box(0f, 0f, 740f, 1080f) }), "geometry: a control inside the mask is visible");
+    Check(!ScreenGeometry.IsVisible(new Box(10f, 10f, 0f, 30f), screen, Array.Empty<Box>()), "geometry: a control with no width is not visible");
+    Box inside = ScreenGeometry.InsideRightEnd(selector, 60f, 30f, 4f);
+    Check(inside == new Box(536f, 505f, 60f, 30f) && selector.Contains(inside), "geometry: the inside-right-end box lies inside the widget");
+}
+
+// ---- pager (the map list, a page at a time) ------------------------------------------------------------------------------
+{
+    Check(Pager.PageCount(0, 8) == 1 && Pager.PageCount(8, 8) == 1 && Pager.PageCount(9, 8) == 2 && Pager.PageCount(57, 8) == 8, "pager: page counts (an empty list still has one page)");
+    Check(Pager.Clamp(-3, 57, 8) == 0 && Pager.Clamp(99, 57, 8) == 7 && Pager.Clamp(4, 57, 8) == 4 && Pager.Clamp(5, 0, 8) == 0, "pager: the page number stays within the pages that exist");
+    Check(Pager.FirstIndex(3, 8) == 24, "pager: first index of a page");
+    Check(Pager.ItemsOnPage(0, 57, 8) == 8 && Pager.ItemsOnPage(7, 57, 8) == 1 && Pager.ItemsOnPage(0, 0, 8) == 0 && Pager.ItemsOnPage(9, 57, 8) == 0, "pager: the last page is short, a missing page is empty");
+    Check(Pager.PageOf(0, 8) == 0 && Pager.PageOf(7, 8) == 0 && Pager.PageOf(8, 8) == 1 && Pager.PageOf(-1, 8) == 0, "pager: which page holds an item");
 }
 
 Console.WriteLine(failures == 0 ? "all tests passed" : $"{failures} test(s) failed");

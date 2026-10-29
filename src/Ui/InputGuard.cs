@@ -3,12 +3,11 @@ using CarX.Game.DR3Console.DR3.Scripts.States.Contexts.Common;
 using UnityEngine.EventSystems;
 using Object = UnityEngine.Object;
 
-namespace CarXModManager.Overlay;
+namespace CarXModManager.Ui;
 
 /// <summary>
-/// Keeps the game from reacting while the player is using one of the integrations' panels: without this, typing in a search box
-/// would also press the game's hotkeys (Backspace goes "back", letters trigger actions) and a click on a panel button
-/// would also click whatever the game draws beneath it.
+/// Keeps the game from reacting while the player types into one of the mod manager's search buttons: without this, typing
+/// would also press the game's hotkeys (Backspace goes "back", letters trigger actions).
 /// <para>
 /// It uses the game's own input lock (<c>InputLocker.LockInput</c>, the same mechanism the game uses during screen
 /// transitions), so the game keeps its state consistent. If that component cannot be found, it falls back to switching the
@@ -27,7 +26,7 @@ internal static class InputGuard
     private static int _transitionsLogged;
 
     /// <summary>
-    /// The "[General] BlockGameInput" setting. When false the game's input is never held back (typing in a panel then also
+    /// The "[Integrations] BlockGameInput" setting. When false the game's input is never held back (typing then also
     /// presses the game's hotkeys), for the case that the hold causes trouble on some screen.
     /// </summary>
     public static bool Enabled { get; set; } = true;
@@ -51,7 +50,7 @@ internal static class InputGuard
             if (locker != null)
             {
                 _handle = locker.LockInput(LockName);
-                LogTransition("INPUT_HELD — the game's input is held back while a panel is in use (the game's input lock).");
+                LogTransition("INPUT_HELD — the game's input is held back while typing (the game's input lock).");
                 return;
             }
         }
@@ -67,7 +66,7 @@ internal static class InputGuard
             {
                 eventSystem.enabled = false;
                 _disabledEventSystem = eventSystem;
-                LogTransition("INPUT_HELD — the game's input is held back while a panel is in use (EventSystem fallback).");
+                LogTransition("INPUT_HELD — the game's input is held back while typing (EventSystem fallback).");
             }
         }
         catch (Exception exception)

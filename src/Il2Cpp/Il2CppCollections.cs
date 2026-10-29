@@ -1,5 +1,4 @@
 using Il2CppInterop.Runtime.InteropTypes;
-using IEnumerator = Il2CppSystem.Collections.IEnumerator;
 
 namespace CarXModManager.Il2Cpp;
 
@@ -7,30 +6,50 @@ namespace CarXModManager.Il2Cpp;
 /// Reading and building the game's own collection objects. The game's methods take and return IL2CPP collections
 /// (<c>List&lt;T&gt;</c>, <c>IEnumerable&lt;T&gt;</c>), which are not .NET collections: this copies them into ordinary lists
 /// to work on, and wraps an ordinary list back into the game's type.
+/// <para>
+/// Collections are read by position (<c>Count</c> and the indexer), never by enumerating. An IL2CPP enumerator of a list is a
+/// boxed struct, and calling its <c>MoveNext</c> through the interop fails ("Collection was modified"), so a list can only be
+/// read safely when its exact type is known.
+/// </para>
 /// </summary>
 internal static class Il2CppCollections
 {
     /// <summary>
-    /// Copies any IL2CPP <c>IEnumerable&lt;T&gt;</c> (a list, a lazy query, ...) into a .NET list. Returns an empty list
-    /// for <c>null</c>. Works through the enumerator, so it does not matter what kind of collection the game passed.
+    /// Copies the elements of <paramref name="source"/> into <paramref name="into"/>, in order, if it is exactly a game
+    /// <c>List&lt;<typeparamref name="TItem"/>&gt;</c>. Elements that are <c>null</c> are skipped.
     /// </summary>
-    public static List<T> ToManagedList<T>(Il2CppSystem.Collections.Generic.IEnumerable<T>? source) where T : Il2CppObjectBase
+    /// <typeparam name="TItem">The list's element type. Elements of a list of a subtype (a <c>List&lt;Sub&gt;</c> where
+    /// <typeparamref name="TBase"/> is wanted) are read through that subtype, so try the likely element types one after another.</typeparam>
+    /// <typeparam name="TBase">The type the caller wants the elements as.</typeparam>
+    /// <param name="source">The collection the game passed (declared as an interface, so any kind of collection can arrive).</param>
+    /// <param name="into">Receives the elements. Left unchanged when the result is <c>false</c>.</param>
+    /// <returns><c>true</c> if <paramref name="source"/> is a <c>List&lt;<typeparamref name="TItem"/>&gt;</c> and was copied (an empty list also gives <c>true</c>);
+    /// <c>false</c> if it is a different kind of collection, in which case the caller should leave the game's collection alone.</returns>
+    public static bool TryCopyList<TItem, TBase>(Il2CppObjectBase source, List<TBase> into) where TItem : Il2CppObjectBase, TBase
     {
-        var result = new List<T>();
-        if (source == null) return result;
+        var list = source.TryCast<Il2CppSystem.Collections.Generic.List<TItem>>();
+        if (list == null) return false;
 
-        Il2CppSystem.Collections.Generic.IEnumerator<T> enumerator = source.GetEnumerator();
-        // MoveNext lives on the non-generic IEnumerator interface, which the generic one extends
-        IEnumerator mover = enumerator.Cast<IEnumerator>();
-        try
+        int count = list.Count;
+        var copy = new List<TBase>(count);
+        for (int i = 0; i < count; i++)
         {
-            while (mover.MoveNext()) result.Add(enumerator.Current);
+            TItem? item = list[i];
+            if (item != null) copy.Add(item);
         }
-        finally
-        {
-            enumerator.TryCast<Il2CppSystem.IDisposable>()?.Dispose();
-        }
-        return result;
+        into.AddRange(copy);
+        return true;
+    }
+
+    /// <summary>
+    /// The game's name for the type of an object, for the log: for a list of rooms it reads like
+    /// <c>System.Collections.Generic.List`1[SomeNamespace.SomeRoomType]</c>. Never throws.
+    /// </summary>
+    public static string DescribeType(Il2CppObjectBase? source)
+    {
+        if (source == null) return "null";
+        try { return source.Cast<Il2CppSystem.Object>().GetIl2CppType().ToString(); }
+        catch (Exception exception) { return $"an unreadable type ({exception.GetType().Name})"; }
     }
 
     /// <summary>Wraps .NET items into a new IL2CPP list, passed as the <c>IEnumerable&lt;T&gt;</c> game methods expect.</summary>

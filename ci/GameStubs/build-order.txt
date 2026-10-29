@@ -2,6 +2,8 @@ Il2Cppmscorlib/Il2Cppmscorlib.csproj
 Binding/Binding.csproj
 UnityEngine.CoreModule/UnityEngine.CoreModule.csproj
 CarX.Common.Base/CarX.Common.Base.csproj
-CarX.DR3.Assembly/CarX.DR3.Assembly.csproj
-UnityEngine.IMGUIModule/UnityEngine.IMGUIModule.csproj
 UnityEngine.UI/UnityEngine.UI.csproj
+Unity.TextMeshPro/Unity.TextMeshPro.csproj
+CarX.DR3.Assembly/CarX.DR3.Assembly.csproj
+Unity.InputSystem/Unity.InputSystem.csproj
+UnityEngine.IMGUIModule/UnityEngine.IMGUIModule.csproj

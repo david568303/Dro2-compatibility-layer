@@ -14,3 +14,106 @@ namespace UnityEngine.EventSystems
     }
 }
 
+namespace UnityEngine.UI
+{
+    public class Button : global::UnityEngine.UI.Selectable
+    {
+        public class ButtonClickedEvent : global::UnityEngine.Events.UnityEvent
+        {
+            public ButtonClickedEvent(System.IntPtr pointer) : base(pointer) { }
+        }
+        public Button(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Button.ButtonClickedEvent onClick { get { throw null!; } set { throw null!; } }
+    }
+    public struct ColorBlock
+    {
+        public global::UnityEngine.Color m_NormalColor;
+        public global::UnityEngine.Color m_HighlightedColor;
+        public global::UnityEngine.Color m_PressedColor;
+        public global::UnityEngine.Color m_SelectedColor;
+        public global::UnityEngine.Color m_DisabledColor;
+        public global::System.Single m_ColorMultiplier;
+        public global::System.Single m_FadeDuration;
+    }
+    public class Graphic : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public Graphic(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.Color color { get { throw null!; } set { throw null!; } }
+        public global::System.Boolean raycastTarget { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.RectTransform rectTransform { get { throw null!; } }
+    }
+    public class Image : global::UnityEngine.UI.MaskableGraphic
+    {
+        public enum Type : int
+        {
+            Simple = 0,
+            Sliced = 1,
+            Tiled = 2,
+            Filled = 3,
+        }
+        public Image(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.Sprite sprite { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Image.Type type { get { throw null!; } set { throw null!; } }
+    }
+    public class LayoutElement : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public LayoutElement(System.IntPtr pointer) : base(pointer) { }
+        public global::System.Boolean ignoreLayout { get { throw null!; } set { throw null!; } }
+    }
+    public class LayoutGroup : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public LayoutGroup(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class Mask : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public Mask(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.RectTransform rectTransform { get { throw null!; } }
+    }
+    public class MaskableGraphic : global::UnityEngine.UI.Graphic
+    {
+        public MaskableGraphic(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class Navigation : global::Il2CppSystem.ValueType
+    {
+        public enum Mode : int
+        {
+            None = 0,
+            Horizontal = 1,
+            Vertical = 2,
+            Automatic = 3,
+            Explicit = 4,
+        }
+        public Navigation(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Navigation.Mode mode { get { throw null!; } set { throw null!; } }
+    }
+    public class RectMask2D : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public RectMask2D(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.RectTransform rectTransform { get { throw null!; } }
+    }
+    public class ScrollRect : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public ScrollRect(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class Selectable : global::UnityEngine.EventSystems.UIBehaviour
+    {
+        public enum Transition : int
+        {
+            None = 0,
+            ColorTint = 1,
+            SpriteSwap = 2,
+            Animation = 3,
+        }
+        public Selectable(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Navigation navigation { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Selectable.Transition transition { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.ColorBlock colors { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.SpriteState spriteState { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Graphic targetGraphic { get { throw null!; } set { throw null!; } }
+    }
+    public class SpriteState : global::Il2CppSystem.ValueType
+    {
+        public SpriteState(System.IntPtr pointer) : base(pointer) { }
+    }
+}
+

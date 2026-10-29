@@ -44,9 +44,10 @@ namespace CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.WorldMap.FreeRide
     public class UICreateRTMPRoomContext : global::CarX.Game.DR3Console.DR3.Scripts.Base.UIBaseContext
     {
         public UICreateRTMPRoomContext(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Button m_mainSettingsTabButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_regulationsTabButton { get { throw null!; } set { throw null!; } }
         public global::CarX.Game.DR3Console.UI.StringMultiValueSelector m_trackSelector { get { throw null!; } set { throw null!; } }
         public global::Il2CppSystem.Collections.Generic.List<global::CarX.Game.DR3Console.UI.ValueOption<global::System.String>> m_trackOptions { get { throw null!; } set { throw null!; } }
-        public global::System.Boolean isMainSettingsActive { get { throw null!; } }
         public global::System.Boolean IsModTrack(global::System.String trackId) { throw null!; }
     }
 }
@@ -82,6 +83,9 @@ namespace CarX.Game.DR3Console.Tournament.UI.Contexts
     {
         public UILobbyRoomBrowserContext(System.IntPtr pointer) : base(pointer) { }
         public global::Il2CppSystem.Action<global::UnityEngine.Vector2> scrollRectValueChanged { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.ScrollRect m_scrollRect { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_createRoomButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_findRoomByCodeButton { get { throw null!; } set { throw null!; } }
         public global::System.Boolean blockedByAnotherContext { get { throw null!; } set { throw null!; } }
         public void FillRoomList(global::Il2CppSystem.Collections.Generic.IEnumerable<global::Binding.ListElementData> roomData, global::Il2CppSystem.Collections.Generic.IEnumerable<global::Binding.ListElementData> roomPlaceholderData) { throw null!; }
     }
@@ -96,6 +100,7 @@ namespace CarX.Game.DR3Console.UI
     public class MultiValueSelector<T> : global::CarX.Game.DR3Console.UI.MultiValueSelector
     {
         public MultiValueSelector(System.IntPtr pointer) : base(pointer) { }
+        public global::TMPro.TMP_Text m_currentOptionText { get { throw null!; } set { throw null!; } }
         public T value { get { throw null!; } }
         public void Select(T id) { throw null!; }
     }

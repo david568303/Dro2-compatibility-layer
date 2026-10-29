@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using CarXModManager.Integrations;
 
 namespace CarXModManager;
 
@@ -40,6 +41,7 @@ internal sealed class ModStatusTracker : ILogListener
     private int _changeCount;
     private int _textChangeCount = -1;
     private int _textPluginCount = -1;
+    private int _textHealthVersion = -1;
     private string _text = string.Empty;
     private string _plainText = string.Empty;
 
@@ -111,10 +113,12 @@ internal sealed class ModStatusTracker : ILogListener
         int pluginCount = IL2CPPChainloader.Instance.Plugins.Count;
         lock (_gate)
         {
-            if (_textChangeCount != _changeCount || _textPluginCount != pluginCount)
+            int healthVersion = IntegrationHealth.Version;
+            if (_textChangeCount != _changeCount || _textPluginCount != pluginCount || _textHealthVersion != healthVersion)
             {
                 _textChangeCount = _changeCount;
                 _textPluginCount = pluginCount;
+                _textHealthVersion = healthVersion;
                 RebuildText();
             }
             plainText = _plainText;
@@ -135,11 +139,16 @@ internal sealed class ModStatusTracker : ILogListener
         string errorsPart = withErrors > 0 ? $"{withErrors} with error{(withErrors == 1 ? string.Empty : "s")}" : string.Empty;
         string failedPart = failed > 0 ? $"{failed} failed to load" : string.Empty;
 
+        // the mod manager's own integrations: shown only when one is not working, so the line is unchanged otherwise
+        string managerPart = IntegrationHealth.Describe();
+
         _plainText = loadedPart
             + (errorsPart.Length > 0 ? ", " + errorsPart : string.Empty)
-            + (failedPart.Length > 0 ? ", " + failedPart : string.Empty);
+            + (failedPart.Length > 0 ? ", " + failedPart : string.Empty)
+            + (managerPart.Length > 0 ? ", " + managerPart : string.Empty);
         _text = loadedPart
             + (errorsPart.Length > 0 ? $", <color={ErrorColorHex}>{errorsPart}</color>" : string.Empty)
-            + (failedPart.Length > 0 ? $", <color={ErrorColorHex}>{failedPart}</color>" : string.Empty);
+            + (failedPart.Length > 0 ? $", <color={ErrorColorHex}>{failedPart}</color>" : string.Empty)
+            + (managerPart.Length > 0 ? $", <color={ErrorColorHex}>{managerPart}</color>" : string.Empty);
     }
 }

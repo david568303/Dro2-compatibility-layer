@@ -5,7 +5,7 @@ For authors of other CarX Drift Racing Online 2 mods (BepInEx 6, IL2CPP). The la
 code.
 
 Only what is described on this page is public API. Everything else in the plugin is internal and may change (the two
-Unity components `StatusLineBehaviour` and `OverlayBehaviour` are public only because IL2CPP injection needs it).
+Unity components `StatusLineBehaviour` and `IntegrationsBehaviour` are public only because IL2CPP injection needs it).
 
 - [Using the layer from your mod](#using-the-layer-from-your-mod)
 - [GameHooks.Create](#gamehookscreate)
@@ -167,7 +167,7 @@ Written under the source `[CarX Mod Manager]` (the layer's plugin name).
 | `STATUSLINE_DISABLED` | Error | Too many drawing errors; the status line is off until the game restarts. Mods are unaffected. |
 | `IMGUI_CALL_UNAVAILABLE` | Warning | An IMGUI method was stripped from this game build, so that part of the line is skipped. |
 
-The integrations' own codes (`INTEGRATIONS_*`, `SERVERBROWSER_*`, `TRACKPICKER_*`, `OVERLAY_*`, `INPUT_*`) are listed in
+The integrations' own codes (`INTEGRATIONS_*`, `SERVERBROWSER_*`, `TRACKPICKER_*`, `TEXTINPUT_*`, `INPUT_*`, `UI_*`) are listed in
 [DETAILS.md](DETAILS.md#checking-it-works).
 
 ## Plugin constants

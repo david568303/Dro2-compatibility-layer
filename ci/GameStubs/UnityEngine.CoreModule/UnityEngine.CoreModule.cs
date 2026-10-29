@@ -22,22 +22,47 @@ namespace UnityEngine
         public global::System.Single a;
         public Color(global::System.Single r, global::System.Single g, global::System.Single b, global::System.Single a) { }
         public Color(global::System.Single r, global::System.Single g, global::System.Single b) { }
+        public static global::UnityEngine.Color white { get { throw null!; } }
+        public static global::UnityEngine.Color Lerp(global::UnityEngine.Color a, global::UnityEngine.Color b, global::System.Single t) { throw null!; }
+        public static global::UnityEngine.Color Lerp(in global::UnityEngine.Color a, in global::UnityEngine.Color b, global::System.Single t) { throw null!; }
     }
     public class Component : global::UnityEngine.Object
     {
         public Component(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.Transform transform { get { throw null!; } }
+        public global::UnityEngine.GameObject gameObject { get { throw null!; } }
     }
-    public enum HideFlags : int
+    public class GameObject : global::UnityEngine.Object
     {
-        None = 0,
-        HideInHierarchy = 1,
-        HideInInspector = 2,
-        DontSaveInEditor = 4,
-        NotEditable = 8,
-        DontSaveInBuild = 16,
-        DontUnloadUnusedAsset = 32,
-        DontSave = 52,
-        HideAndDontSave = 61,
+        public GameObject(System.IntPtr pointer) : base(pointer) { }
+        public GameObject(global::System.String name) : base(default(System.IntPtr)) { }
+        public GameObject() : base(default(System.IntPtr)) { }
+        public GameObject(global::System.String name, global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::Il2CppSystem.Type> components) : base(default(System.IntPtr)) { }
+        public GameObject(global::System.String name, global::Il2CppSystem.Type[] components) : base(default(System.IntPtr)) { }
+        public global::UnityEngine.Transform transform { get { throw null!; } }
+        public global::System.Int32 layer { get { throw null!; } set { throw null!; } }
+        public global::System.Boolean activeSelf { get { throw null!; } }
+        public global::System.Boolean activeInHierarchy { get { throw null!; } }
+        public T GetComponent<T>() { throw null!; }
+        public global::UnityEngine.Component GetComponent(global::Il2CppSystem.Type type) { throw null!; }
+        public global::UnityEngine.Component GetComponent(global::System.String type) { throw null!; }
+        public global::UnityEngine.Component GetComponentInChildren(global::Il2CppSystem.Type type, global::System.Boolean includeInactive) { throw null!; }
+        public global::UnityEngine.Component GetComponentInChildren(global::Il2CppSystem.Type type) { throw null!; }
+        public T GetComponentInChildren<T>() { throw null!; }
+        public T GetComponentInChildren<T>(global::System.Boolean includeInactive) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponents(global::Il2CppSystem.Type type) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponents<T>() { throw null!; }
+        public void GetComponents(global::Il2CppSystem.Type type, global::Il2CppSystem.Collections.Generic.List<global::UnityEngine.Component> results) { throw null!; }
+        public void GetComponents<T>(global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInParent(global::Il2CppSystem.Type type) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInParent(global::Il2CppSystem.Type type, global::System.Boolean includeInactive) { throw null!; }
+        public void GetComponentsInParent<T>(global::System.Boolean includeInactive, global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponentsInParent<T>(global::System.Boolean includeInactive) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponentsInParent<T>() { throw null!; }
+        public global::UnityEngine.Component AddComponent(global::Il2CppSystem.Type componentType) { throw null!; }
+        public T AddComponent<T>()
+            where T : global::UnityEngine.Component { throw null!; }
+        public void SetActive(global::System.Boolean value) { throw null!; }
     }
     public enum KeyCode : int
     {
@@ -381,6 +406,10 @@ namespace UnityEngine
         Joystick8Button18 = 508,
         Joystick8Button19 = 509,
     }
+    public class Material : global::UnityEngine.Object
+    {
+        public Material(System.IntPtr pointer) : base(pointer) { }
+    }
     public struct Matrix4x4
     {
         public global::System.Single m00;
@@ -402,10 +431,6 @@ namespace UnityEngine
         public static global::UnityEngine.Matrix4x4 TRS(global::UnityEngine.Vector3 pos, global::UnityEngine.Quaternion q, global::UnityEngine.Vector3 s) { throw null!; }
         public static global::UnityEngine.Matrix4x4 TRS(in global::UnityEngine.Vector3 pos, in global::UnityEngine.Quaternion q, in global::UnityEngine.Vector3 s) { throw null!; }
     }
-    public class MipmapLimitDescriptor : global::Il2CppSystem.ValueType
-    {
-        public MipmapLimitDescriptor(System.IntPtr pointer) : base(pointer) { }
-    }
     public class MonoBehaviour : global::UnityEngine.Behaviour
     {
         public MonoBehaviour(System.IntPtr pointer) : base(pointer) { }
@@ -414,7 +439,7 @@ namespace UnityEngine
     public class Object : global::Il2CppSystem.Object
     {
         public Object(System.IntPtr pointer) : base(pointer) { }
-        public global::UnityEngine.HideFlags hideFlags { get { throw null!; } set { throw null!; } }
+        public global::System.String name { get { throw null!; } set { throw null!; } }
         public static implicit operator global::System.Boolean(global::UnityEngine.Object exists) { throw null!; }
         public static void Destroy(global::UnityEngine.Object obj, global::System.Single t) { throw null!; }
         public static void Destroy(global::UnityEngine.Object obj) { throw null!; }
@@ -446,31 +471,35 @@ namespace UnityEngine
         public Rect(global::UnityEngine.Rect source) { }
         public global::System.Single x { get { throw null!; } set { throw null!; } }
         public global::System.Single y { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 center { get { throw null!; } set { throw null!; } }
         public global::System.Single width { get { throw null!; } set { throw null!; } }
         public global::System.Single height { get { throw null!; } set { throw null!; } }
-        public global::System.Boolean Contains(global::UnityEngine.Vector2 point) { throw null!; }
-        public global::System.Boolean Contains(global::UnityEngine.Vector3 point) { throw null!; }
-        public global::System.Boolean Contains(in global::UnityEngine.Vector2 point) { throw null!; }
-        public global::System.Boolean Contains(in global::UnityEngine.Vector3 point) { throw null!; }
-        public global::System.Boolean Contains(global::UnityEngine.Vector3 point, global::System.Boolean allowInverse) { throw null!; }
-        public global::System.Boolean Contains(in global::UnityEngine.Vector3 point, global::System.Boolean allowInverse) { throw null!; }
     }
-    public class RectOffset : global::Il2CppSystem.Object
+    public class RectTransform : global::UnityEngine.Transform
     {
-        public RectOffset(System.IntPtr pointer) : base(pointer) { }
-        public RectOffset() : base(default(System.IntPtr)) { }
-        public RectOffset(global::Il2CppSystem.Object sourceStyle, global::System.IntPtr source) : base(default(System.IntPtr)) { }
-        public RectOffset(global::System.Int32 left, global::System.Int32 right, global::System.Int32 top, global::System.Int32 bottom) : base(default(System.IntPtr)) { }
+        public RectTransform(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.Rect rect { get { throw null!; } }
+        public global::UnityEngine.Vector2 anchorMin { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 anchorMax { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 anchoredPosition { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 sizeDelta { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 pivot { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 offsetMin { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Vector2 offsetMax { get { throw null!; } set { throw null!; } }
+        public void GetWorldCorners(global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<global::UnityEngine.Vector3> fourCornersArray) { throw null!; }
     }
     public class Screen : global::Il2CppSystem.Object
     {
         public Screen(System.IntPtr pointer) : base(pointer) { }
-        public static global::System.Int32 width { get { throw null!; } }
         public static global::System.Int32 height { get { throw null!; } }
     }
     public class ScriptableObject : global::UnityEngine.Object
     {
         public ScriptableObject(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class Sprite : global::UnityEngine.Object
+    {
+        public Sprite(System.IntPtr pointer) : base(pointer) { }
     }
     public class SystemInfo : global::Il2CppSystem.Object
     {
@@ -481,110 +510,35 @@ namespace UnityEngine
     {
         public Texture(System.IntPtr pointer) : base(pointer) { }
     }
-    public class Texture2D : global::UnityEngine.Texture
-    {
-        public Texture2D(System.IntPtr pointer) : base(pointer) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.GraphicsFormat format, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags, global::System.Int32 mipCount, global::System.IntPtr nativeTex, global::UnityEngine.MipmapLimitDescriptor mipmapLimitDescriptor) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.DefaultFormat format, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.DefaultFormat format, global::System.Int32 mipCount, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.DefaultFormat format, global::System.Int32 mipCount, global::System.String mipmapLimitGroupName, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.DefaultFormat format, global::System.Int32 mipCount, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags, global::UnityEngine.MipmapLimitDescriptor mipmapLimitDescriptor) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.GraphicsFormat format, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.GraphicsFormat format, global::System.Int32 mipCount, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.GraphicsFormat format, global::System.Int32 mipCount, global::System.String mipmapLimitGroupName, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.Experimental.Rendering.GraphicsFormat format, global::System.Int32 mipCount, global::UnityEngine.Experimental.Rendering.TextureCreationFlags flags, global::UnityEngine.MipmapLimitDescriptor mipmapLimitDescriptor) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Int32 mipCount, global::System.Boolean linear, global::System.IntPtr nativeTex, global::System.Boolean createUninitialized, global::UnityEngine.MipmapLimitDescriptor mipmapLimitDescriptor) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Int32 mipCount, global::System.Boolean linear) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Int32 mipCount, global::System.Boolean linear, global::System.Boolean createUninitialized) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Int32 mipCount, global::System.Boolean linear, global::System.Boolean createUninitialized, global::UnityEngine.MipmapLimitDescriptor mipmapLimitDescriptor) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Int32 mipCount, global::System.Boolean linear, global::System.Boolean createUninitialized, global::System.Boolean ignoreMipmapLimit, global::System.String mipmapLimitGroupName) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Boolean mipChain, global::System.Boolean linear) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Boolean mipChain, global::System.Boolean linear, global::System.Boolean createUninitialized) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height, global::UnityEngine.TextureFormat textureFormat, global::System.Boolean mipChain) : base(default(System.IntPtr)) { }
-        public Texture2D(global::System.Int32 width, global::System.Int32 height) : base(default(System.IntPtr)) { }
-        public void SetPixel(global::System.Int32 x, global::System.Int32 y, global::UnityEngine.Color color) { throw null!; }
-        public void SetPixel(global::System.Int32 x, global::System.Int32 y, global::UnityEngine.Color color, global::System.Int32 mipLevel) { throw null!; }
-        public void Apply(global::System.Boolean updateMipmaps, global::System.Boolean makeNoLongerReadable) { throw null!; }
-        public void Apply(global::System.Boolean updateMipmaps) { throw null!; }
-        public void Apply() { throw null!; }
-    }
-    public enum TextureFormat : int
-    {
-        Alpha8 = 1,
-        ARGB4444 = 2,
-        RGB24 = 3,
-        RGBA32 = 4,
-        ARGB32 = 5,
-        RGB565 = 7,
-        R16 = 9,
-        DXT1 = 10,
-        DXT5 = 12,
-        RGBA4444 = 13,
-        BGRA32 = 14,
-        RHalf = 15,
-        RGHalf = 16,
-        RGBAHalf = 17,
-        RFloat = 18,
-        RGFloat = 19,
-        RGBAFloat = 20,
-        YUY2 = 21,
-        RGB9e5Float = 22,
-        BC4 = 26,
-        BC5 = 27,
-        BC6H = 24,
-        BC7 = 25,
-        DXT1Crunched = 28,
-        DXT5Crunched = 29,
-        PVRTC_RGB2 = 30,
-        PVRTC_RGBA2 = 31,
-        PVRTC_RGB4 = 32,
-        PVRTC_RGBA4 = 33,
-        ETC_RGB4 = 34,
-        EAC_R = 41,
-        EAC_R_SIGNED = 42,
-        EAC_RG = 43,
-        EAC_RG_SIGNED = 44,
-        ETC2_RGB = 45,
-        ETC2_RGBA1 = 46,
-        ETC2_RGBA8 = 47,
-        ASTC_4x4 = 48,
-        ASTC_5x5 = 49,
-        ASTC_6x6 = 50,
-        ASTC_8x8 = 51,
-        ASTC_10x10 = 52,
-        ASTC_12x12 = 53,
-        RG16 = 62,
-        R8 = 63,
-        ETC_RGB4Crunched = 64,
-        ETC2_RGBA8Crunched = 65,
-        ASTC_HDR_4x4 = 66,
-        ASTC_HDR_5x5 = 67,
-        ASTC_HDR_6x6 = 68,
-        ASTC_HDR_8x8 = 69,
-        ASTC_HDR_10x10 = 70,
-        ASTC_HDR_12x12 = 71,
-        RG32 = 72,
-        RGB48 = 73,
-        RGBA64 = 74,
-        R8_SIGNED = 75,
-        RG16_SIGNED = 76,
-        RGB24_SIGNED = 77,
-        RGBA32_SIGNED = 78,
-        R16_SIGNED = 79,
-        RG32_SIGNED = 80,
-        RGB48_SIGNED = 81,
-        RGBA64_SIGNED = 82,
-    }
     public class Time : global::Il2CppSystem.Object
     {
         public Time(System.IntPtr pointer) : base(pointer) { }
         public static global::System.Single unscaledTime { get { throw null!; } }
+        public static global::System.Int32 frameCount { get { throw null!; } }
+    }
+    public class Transform : global::UnityEngine.Component
+    {
+        public Transform(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.Vector3 localScale { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.Transform parent { get { throw null!; } set { throw null!; } }
+        public global::System.Int32 childCount { get { throw null!; } }
+        public void SetParent(global::UnityEngine.Transform p) { throw null!; }
+        public void SetParent(global::UnityEngine.Transform parent, global::System.Boolean worldPositionStays) { throw null!; }
+        public global::UnityEngine.Vector3 TransformPoint(global::UnityEngine.Vector3 position) { throw null!; }
+        public global::UnityEngine.Vector3 TransformPoint(global::System.Single x, global::System.Single y, global::System.Single z) { throw null!; }
+        public global::UnityEngine.Vector3 InverseTransformPoint(global::UnityEngine.Vector3 position) { throw null!; }
+        public global::UnityEngine.Vector3 InverseTransformPoint(global::System.Single x, global::System.Single y, global::System.Single z) { throw null!; }
+        public void SetAsLastSibling() { throw null!; }
+        public global::UnityEngine.Transform Find(global::System.String n) { throw null!; }
+        public global::UnityEngine.Transform GetChild(global::System.Int32 index) { throw null!; }
     }
     public struct Vector2
     {
         public global::System.Single x;
         public global::System.Single y;
         public Vector2(global::System.Single x, global::System.Single y) { }
+        public static global::UnityEngine.Vector2 zero { get { throw null!; } }
+        public static global::UnityEngine.Vector2 one { get { throw null!; } }
     }
     public struct Vector3
     {
@@ -594,178 +548,27 @@ namespace UnityEngine
         public Vector3(global::System.Single x, global::System.Single y, global::System.Single z) { }
         public Vector3(global::System.Single x, global::System.Single y) { }
         public static global::UnityEngine.Vector3 zero { get { throw null!; } }
+        public static global::UnityEngine.Vector3 one { get { throw null!; } }
     }
 }
 
-namespace UnityEngine.Experimental.Rendering
+namespace UnityEngine.Events
 {
-    public enum DefaultFormat : int
+    public class UnityAction : global::Il2CppSystem.MulticastDelegate
     {
-        LDR = 0,
-        HDR = 1,
-        DepthStencil = 2,
-        Shadow = 3,
-        Video = 4,
+        public UnityAction(System.IntPtr pointer) : base(pointer) { }
+        public static implicit operator global::UnityEngine.Events.UnityAction(global::System.Action arg0 = null) { throw null!; }
+        public static global::UnityEngine.Events.UnityAction operator +(global::UnityEngine.Events.UnityAction arg0 = null, global::UnityEngine.Events.UnityAction arg1 = null) { throw null!; }
+        public static global::UnityEngine.Events.UnityAction operator -(global::UnityEngine.Events.UnityAction arg0 = null, global::UnityEngine.Events.UnityAction arg1 = null) { throw null!; }
     }
-    public enum GraphicsFormat : int
+    public class UnityEvent : global::UnityEngine.Events.UnityEventBase
     {
-        None = 0,
-        R8_SRGB = 1,
-        R8G8_SRGB = 2,
-        R8G8B8_SRGB = 3,
-        R8G8B8A8_SRGB = 4,
-        R8_UNorm = 5,
-        R8G8_UNorm = 6,
-        R8G8B8_UNorm = 7,
-        R8G8B8A8_UNorm = 8,
-        R8_SNorm = 9,
-        R8G8_SNorm = 10,
-        R8G8B8_SNorm = 11,
-        R8G8B8A8_SNorm = 12,
-        R8_UInt = 13,
-        R8G8_UInt = 14,
-        R8G8B8_UInt = 15,
-        R8G8B8A8_UInt = 16,
-        R8_SInt = 17,
-        R8G8_SInt = 18,
-        R8G8B8_SInt = 19,
-        R8G8B8A8_SInt = 20,
-        R16_UNorm = 21,
-        R16G16_UNorm = 22,
-        R16G16B16_UNorm = 23,
-        R16G16B16A16_UNorm = 24,
-        R16_SNorm = 25,
-        R16G16_SNorm = 26,
-        R16G16B16_SNorm = 27,
-        R16G16B16A16_SNorm = 28,
-        R16_UInt = 29,
-        R16G16_UInt = 30,
-        R16G16B16_UInt = 31,
-        R16G16B16A16_UInt = 32,
-        R16_SInt = 33,
-        R16G16_SInt = 34,
-        R16G16B16_SInt = 35,
-        R16G16B16A16_SInt = 36,
-        R32_UInt = 37,
-        R32G32_UInt = 38,
-        R32G32B32_UInt = 39,
-        R32G32B32A32_UInt = 40,
-        R32_SInt = 41,
-        R32G32_SInt = 42,
-        R32G32B32_SInt = 43,
-        R32G32B32A32_SInt = 44,
-        R16_SFloat = 45,
-        R16G16_SFloat = 46,
-        R16G16B16_SFloat = 47,
-        R16G16B16A16_SFloat = 48,
-        R32_SFloat = 49,
-        R32G32_SFloat = 50,
-        R32G32B32_SFloat = 51,
-        R32G32B32A32_SFloat = 52,
-        B8G8R8_SRGB = 56,
-        B8G8R8A8_SRGB = 57,
-        B8G8R8_UNorm = 58,
-        B8G8R8A8_UNorm = 59,
-        B8G8R8_SNorm = 60,
-        B8G8R8A8_SNorm = 61,
-        B8G8R8_UInt = 62,
-        B8G8R8A8_UInt = 63,
-        B8G8R8_SInt = 64,
-        B8G8R8A8_SInt = 65,
-        R4G4B4A4_UNormPack16 = 66,
-        B4G4R4A4_UNormPack16 = 67,
-        R5G6B5_UNormPack16 = 68,
-        B5G6R5_UNormPack16 = 69,
-        R5G5B5A1_UNormPack16 = 70,
-        B5G5R5A1_UNormPack16 = 71,
-        A1R5G5B5_UNormPack16 = 72,
-        E5B9G9R9_UFloatPack32 = 73,
-        B10G11R11_UFloatPack32 = 74,
-        A2B10G10R10_UNormPack32 = 75,
-        A2B10G10R10_UIntPack32 = 76,
-        A2B10G10R10_SIntPack32 = 77,
-        A2R10G10B10_UNormPack32 = 78,
-        A2R10G10B10_UIntPack32 = 79,
-        A2R10G10B10_SIntPack32 = 80,
-        A2R10G10B10_XRSRGBPack32 = 81,
-        A2R10G10B10_XRUNormPack32 = 82,
-        R10G10B10_XRSRGBPack32 = 83,
-        R10G10B10_XRUNormPack32 = 84,
-        A10R10G10B10_XRSRGBPack32 = 85,
-        A10R10G10B10_XRUNormPack32 = 86,
-        D16_UNorm = 90,
-        D24_UNorm = 91,
-        D24_UNorm_S8_UInt = 92,
-        D32_SFloat = 93,
-        D32_SFloat_S8_UInt = 94,
-        S8_UInt = 95,
-        RGB_DXT1_SRGB = 96,
-        RGBA_DXT1_SRGB = 96,
-        RGB_DXT1_UNorm = 97,
-        RGBA_DXT1_UNorm = 97,
-        RGBA_DXT3_SRGB = 98,
-        RGBA_DXT3_UNorm = 99,
-        RGBA_DXT5_SRGB = 100,
-        RGBA_DXT5_UNorm = 101,
-        R_BC4_UNorm = 102,
-        R_BC4_SNorm = 103,
-        RG_BC5_UNorm = 104,
-        RG_BC5_SNorm = 105,
-        RGB_BC6H_UFloat = 106,
-        RGB_BC6H_SFloat = 107,
-        RGBA_BC7_SRGB = 108,
-        RGBA_BC7_UNorm = 109,
-        RGB_PVRTC_2Bpp_SRGB = 110,
-        RGB_PVRTC_2Bpp_UNorm = 111,
-        RGB_PVRTC_4Bpp_SRGB = 112,
-        RGB_PVRTC_4Bpp_UNorm = 113,
-        RGBA_PVRTC_2Bpp_SRGB = 114,
-        RGBA_PVRTC_2Bpp_UNorm = 115,
-        RGBA_PVRTC_4Bpp_SRGB = 116,
-        RGBA_PVRTC_4Bpp_UNorm = 117,
-        RGB_ETC_UNorm = 118,
-        RGB_ETC2_SRGB = 119,
-        RGB_ETC2_UNorm = 120,
-        RGB_A1_ETC2_SRGB = 121,
-        RGB_A1_ETC2_UNorm = 122,
-        RGBA_ETC2_SRGB = 123,
-        RGBA_ETC2_UNorm = 124,
-        R_EAC_UNorm = 125,
-        R_EAC_SNorm = 126,
-        RG_EAC_UNorm = 127,
-        RG_EAC_SNorm = 128,
-        RGBA_ASTC4X4_SRGB = 129,
-        RGBA_ASTC4X4_UNorm = 130,
-        RGBA_ASTC5X5_SRGB = 131,
-        RGBA_ASTC5X5_UNorm = 132,
-        RGBA_ASTC6X6_SRGB = 133,
-        RGBA_ASTC6X6_UNorm = 134,
-        RGBA_ASTC8X8_SRGB = 135,
-        RGBA_ASTC8X8_UNorm = 136,
-        RGBA_ASTC10X10_SRGB = 137,
-        RGBA_ASTC10X10_UNorm = 138,
-        RGBA_ASTC12X12_SRGB = 139,
-        RGBA_ASTC12X12_UNorm = 140,
-        YUV2 = 141,
-        DepthAuto = 142,
-        ShadowAuto = 143,
-        VideoAuto = 144,
-        RGBA_ASTC4X4_UFloat = 145,
-        RGBA_ASTC5X5_UFloat = 146,
-        RGBA_ASTC6X6_UFloat = 147,
-        RGBA_ASTC8X8_UFloat = 148,
-        RGBA_ASTC10X10_UFloat = 149,
-        RGBA_ASTC12X12_UFloat = 150,
-        D16_UNorm_S8_UInt = 151,
+        public UnityEvent(System.IntPtr pointer) : base(pointer) { }
+        public void AddListener(global::UnityEngine.Events.UnityAction call) { throw null!; }
     }
-    public enum TextureCreationFlags : int
+    public class UnityEventBase : global::Il2CppSystem.Object
     {
-        None = 0,
-        MipChain = 1,
-        DontInitializePixels = 4,
-        Crunch = 64,
-        DontUploadUponCreate = 1024,
-        IgnoreMipmapLimit = 2048,
+        public UnityEventBase(System.IntPtr pointer) : base(pointer) { }
     }
 }
 

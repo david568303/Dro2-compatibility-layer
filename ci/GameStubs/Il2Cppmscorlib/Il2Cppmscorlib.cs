@@ -7,15 +7,15 @@ namespace Il2CppSystem
     {
         public Action(System.IntPtr pointer) : base(pointer) { }
         public void Invoke(T obj) { throw null!; }
+        public static implicit operator global::Il2CppSystem.Action<T>(global::System.Action<T> arg0 = null) { throw null!; }
+        public static global::Il2CppSystem.Action<T> operator +(global::Il2CppSystem.Action<T> arg0 = null, global::Il2CppSystem.Action<T> arg1 = null) { throw null!; }
+        public static global::Il2CppSystem.Action<T> operator -(global::Il2CppSystem.Action<T> arg0 = null, global::Il2CppSystem.Action<T> arg1 = null) { throw null!; }
     }
     public class Delegate : global::Il2CppSystem.Object
     {
         public Delegate(System.IntPtr pointer) : base(pointer) { }
-    }
-    public class IDisposable : global::Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
-    {
-        public IDisposable(System.IntPtr pointer) : base(pointer) { }
-        public void Dispose() { throw null!; }
+        public static global::System.Boolean operator ==(global::Il2CppSystem.Delegate d1, global::Il2CppSystem.Delegate d2) { throw null!; }
+        public static global::System.Boolean operator !=(global::Il2CppSystem.Delegate d1, global::Il2CppSystem.Delegate d2) { throw null!; }
     }
     public class MulticastDelegate : global::Il2CppSystem.Delegate
     {
@@ -24,6 +24,8 @@ namespace Il2CppSystem
     public class Object : global::Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
     {
         public Object(System.IntPtr pointer) : base(pointer) { }
+        public global::Il2CppSystem.Type GetIl2CppType() { throw null!; }
+        public global::System.String ToString() { throw null!; }
     }
     public class Type : global::Il2CppSystem.Reflection.MemberInfo
     {
@@ -35,26 +37,11 @@ namespace Il2CppSystem
     }
 }
 
-namespace Il2CppSystem.Collections
-{
-    public class IEnumerator : global::Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
-    {
-        public IEnumerator(System.IntPtr pointer) : base(pointer) { }
-        public global::System.Boolean MoveNext() { throw null!; }
-    }
-}
-
 namespace Il2CppSystem.Collections.Generic
 {
     public class IEnumerable<T> : global::Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
     {
         public IEnumerable(System.IntPtr pointer) : base(pointer) { }
-        public global::Il2CppSystem.Collections.Generic.IEnumerator<T> GetEnumerator() { throw null!; }
-    }
-    public class IEnumerator<T> : global::Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
-    {
-        public IEnumerator(System.IntPtr pointer) : base(pointer) { }
-        public T Current { get { throw null!; } }
     }
     public class List<T> : global::Il2CppSystem.Object
     {
@@ -73,6 +60,7 @@ namespace Il2CppSystem.Reflection
     public class MemberInfo : global::Il2CppSystem.Object
     {
         public MemberInfo(System.IntPtr pointer) : base(pointer) { }
+        public global::System.String Name { get { throw null!; } }
     }
 }
 

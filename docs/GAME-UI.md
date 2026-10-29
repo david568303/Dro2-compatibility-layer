@@ -22,7 +22,7 @@ screens. They describe structure, not looks: the layout and styling live in Unit
 
 | Part | Class | Notes |
 |---|---|---|
-| List + headers + side panel | `UILobbyRoomBrowserContext` | `FillRoomList(IEnumerable<ListElementData> rooms, IEnumerable<ListElementData> placeholders)`, `SetBrowserState(LobbyRoomBrowserState)`, `scrollRectValueChanged`, `blockedByAnotherContext`; headers: track, room name, configuration, players |
+| List + headers + side panel | `UILobbyRoomBrowserContext` | `FillRoomList(IEnumerable<ListElementData> rooms, IEnumerable<ListElementData> placeholders)`, `SetBrowserState(LobbyRoomBrowserState)`, `scrollRectValueChanged`, `blockedByAnotherContext`; headers: track, room name, configuration, players; UI references used when adding controls: `m_scrollRect` (the list), `m_findRoomByCodeButton`, `m_createRoomButton` (plain `Button`s with TextMeshPro text, the look to copy) |
 | A row | `UILobbyRoomPreviewElement` bound to `LobbyRoomPreviewData` | `roomName`, `mapName`, `mapDisplayName` (set later for mod maps), `roomConfig`, `serverCluster`, `currentPlayers`, `maxPlayers`, `ping`, `locked`, `roomInfo` (tags, race type, secret code) |
 | Details panel | `UILobbyRoomPreview`, `UIRTMPRoomPlayerInfoListElement` | weather, time, tyres, tags, minimap; players with ping and rating (loaded when a room is selected: `IRoomAdditionalInfo`) |
 | Filters screen | `UILobbyRoomFiltersContext`, `LobbyRoomsFilterModel` | server-side: per-track toggles and a room-name filter, on a separate screen with pages |
@@ -35,12 +35,21 @@ screens. They describe structure, not looks: the layout and styling live in Unit
   download state) via `SetTracks(IEnumerable<TrackListData>)`; mods are a special region, loaded from mod.io
   (`LoadModIconsAsync`, subscribed-mods watcher). Selecting a track focuses its 3D marker (`GlobalMapModel`).
   *Not used by the integrations yet.*
-- **Create room** (`UICreateRTMPRoomContext`): about 20 one-value left/right selectors (`MultiValueSelector<T>`); the map is
-  `m_trackSelector` (`StringMultiValueSelector`) with its choices in `m_trackOptions` (`ValueOption<string>`: `id`, `GetText()`),
-  mod maps resolved through `m_modDisplayNames`. `Select(id)` does what the arrows do.
+- **Create room** (`UICreateRTMPRoomContext`): about 20 one-value left/right selectors (`MultiValueSelector<T>`, each with
+  `m_buttonPrevious`, `m_buttonNext` and `m_currentOptionText`); the map is `m_trackSelector` (`StringMultiValueSelector`) with
+  its choices in `m_trackOptions` (`ValueOption<string>`: `id`, `GetText()`), mod maps resolved through `m_modDisplayNames`.
+  `Select(id)` does what the arrows do. The screen has two tabs, `m_mainSettingsTabButton` and `m_regulationsTabButton` (text
+  buttons, the look to copy).
 - **Free ride area selection** (`UIFreeRideAreaSelectionContext`, `FreeRideListElementData`): the list of areas on the map.
+
+## Text input in the game
+
+The game has real TextMeshPro input fields (chat, room code, password, hex colour) and masks its own input actions while one is
+focused (`TMPInputFieldExtension`, `InputFieldConfigureInputEnvironment`). The mod manager does not create input fields; a search
+button reads the keys itself (see "How the integrations work" in DETAILS.md).
 
 ## Not known without screenshots or the prefabs
 
-Where things sit on screen and how they look (colours, fonts, sizes), which screen areas are free for a panel, and how the
-gamepad navigation order runs. The panels' default positions are therefore guesses, adjustable in the config.
+Where things sit on screen and how they look (colours, fonts, sizes), which screen areas are free for new controls, and how the
+gamepad navigation order runs. The mod manager therefore works out the placement at run time from the screen's own layout, checks
+it, and writes the layout to `BepInEx/carx.modmanager.ui-*.txt`; the placement settings correct a wrong guess.

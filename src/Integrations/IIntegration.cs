@@ -23,8 +23,17 @@ internal interface IIntegration
     IReadOnlyList<HookSpec> Hooks { get; }
 
     /// <summary>
-    /// Creates the integration's hooks and registers its panels. Only called when the integration is enabled.
+    /// Creates the integration's hooks. Only called when the integration is enabled.
     /// Returns <c>true</c> if the integration is usable; <c>false</c> if its required hooks could not be created (already logged).
     /// </summary>
     bool Install(Harmony harmony, ManualLogSource log);
+
+    /// <summary>
+    /// Called every frame while the game runs (only for integrations that installed). The integration adds its controls to the game's
+    /// screens from here (after the screen has settled) and keeps them up to date. Exceptions are caught and counted by the host.
+    /// </summary>
+    void Update();
+
+    /// <summary>Called when the game quits or the mod manager unloads: end anything still running (a search being typed, ...).</summary>
+    void Shutdown();
 }

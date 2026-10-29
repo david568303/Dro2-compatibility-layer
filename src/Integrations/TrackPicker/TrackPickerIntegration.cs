@@ -4,21 +4,22 @@ using BepInEx.Logging;
 using CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.WorldMap.FreeRide;
 using HarmonyLib;
 using CarXModManager.Logic;
-using CarXModManager.Overlay;
+using CarXModManager.Ui;
 using UnityEngine;
 
 namespace CarXModManager.Integrations.TrackPicker;
 
 /// <summary>
-/// A searchable map picker for the "create room" screen. The game offers the map as a one-value left/right selector, so
+/// A searchable map list for the "create room" screen. The game offers the map as a one-value left/right selector, so
 /// reaching one map among many (official maps plus every mod map you have) means stepping through them one at a time.
-/// This integration lists all of them in a panel next to the screen: type to search, click a map to select it, mark favourites
-/// (listed first), or show only mod maps.
+/// This integration adds a "Browse maps" button next to the selector that opens a list of all of them: search, mark favourites
+/// (listed first), show only mod maps, and click a map to select it.
 /// <para>
 /// How it works: the screen's <c>UICreateRTMPRoomContext</c> keeps the map choices in its track selector
-/// (<c>m_trackSelector</c>, a <c>StringMultiValueSelector</c>) and the choices in <c>m_trackOptions</c>. The panel reads those
+/// (<c>m_trackSelector</c>, a <c>StringMultiValueSelector</c>) and the choices in <c>m_trackOptions</c>. The list reads those
 /// and calls the selector's own <c>Select(id)</c>, which is exactly what the arrows do, so the rest of the screen (areas,
-/// configurations, preview) updates as usual.
+/// configurations, preview) updates as usual. The button and the list are real objects of the game's own screen
+/// (<see cref="TrackPickerPopup"/>), built only after a checklist of the screen's structure passed.
 /// </para>
 /// </summary>
 internal sealed class TrackPickerIntegration : IIntegration
@@ -26,8 +27,20 @@ internal sealed class TrackPickerIntegration : IIntegration
     private const string GameAssembly = "CarX.DR3.Assembly";
     private const string ViewTypeName = "CarX.Game.DR3Console.DR3.Scripts.States.Contexts.UI.WorldMap.FreeRide.UICreateRTMPRoomContext";
 
-    /// <summary>Seconds between refreshes of the map list while the panel is open (mod map names arrive a little late).</summary>
+    /// <summary>Seconds between refreshes of the map list while the screen is open (mod map names arrive a little late).</summary>
     private const float RefreshSeconds = 0.5f;
+
+    /// <summary>Seconds after the screen opens before the button is added, so the game has finished arranging (and animating) the screen.</summary>
+    private const float SettleSeconds = 0.4f;
+
+    /// <summary>Tries to add the button each time the screen opens; a screen that is still sliding in can fail a check that passes a moment later.</summary>
+    private const int BuildAttemptsPerOpening = 3;
+
+    /// <summary>Seconds between those tries, multiplied by the number of tries so far.</summary>
+    private const float BuildRetrySeconds = 1f;
+
+    /// <summary>Openings of the screen whose every try failed, after which the button is not tried again this session (each was logged with what was missing).</summary>
+    private const int MaxFailedOpenings = 3;
 
     /// <summary>Errors after which the integration stops reading the game's screen.</summary>
     private const int ErrorsBeforeStandingDown = 5;
@@ -36,7 +49,7 @@ internal sealed class TrackPickerIntegration : IIntegration
     internal static TrackPickerIntegration? Instance { get; private set; }
 
     private ConfigEntry<bool> _enabled = null!, _onlyFavorites = null!, _onlyMods = null!, _sortByName = null!;
-    private ConfigEntry<PanelAnchor> _anchor = null!;
+    private ConfigEntry<ButtonPlacement> _buttonPlacement = null!;
     private ConfigEntry<float> _offsetX = null!, _offsetY = null!;
 
     private FavoriteStore? _favorites;
@@ -44,10 +57,17 @@ internal sealed class TrackPickerIntegration : IIntegration
     private readonly List<(string Id, string Label, bool IsMod)> _options = new();
     private readonly List<TrackEntry> _entries = new();
     private int[] _visible = Array.Empty<int>();
+    private readonly TrackPickerPopup _popup;
     private float _nextRefresh;
+    private float _buildAt = -1f;
+    private int _buildAttempt;
+    private int _failedOpenings;
     private bool _dirty = true;
     private bool _optionsLogged;
     private int _errors;
+
+    /// <summary>Creates the integration (its hooks and controls are set up later, by <see cref="Install"/>).</summary>
+    public TrackPickerIntegration() => _popup = new TrackPickerPopup(this);
 
     /// <inheritdoc />
     public string Name => "TrackPicker";
@@ -67,36 +87,21 @@ internal sealed class TrackPickerIntegration : IIntegration
     /// <summary>Indices into <see cref="Entries"/> of the maps to show, in display order.</summary>
     public IReadOnlyList<int> Visible => _visible;
 
-    /// <summary>True while the create-room screen is open (and nothing is drawn over it).</summary>
-    public bool IsPanelVisible
-    {
-        get
-        {
-            UICreateRTMPRoomContext? view = _view;
-            if (view == null || _errors >= ErrorsBeforeStandingDown) return false;
-            try { return view.isMainSettingsActive; }
-            catch (Exception) { return true; }
-        }
-    }
-
-    /// <summary>Where the panel sits (from the config); setting it remembers the new position (the player dragged the panel).</summary>
-    public PanelPlacement Placement
-    {
-        get => new(_anchor.Value, _offsetX.Value, _offsetY.Value);
-        set { _offsetX.Value = value.OffsetX; _offsetY.Value = value.OffsetY; }
-    }
+    /// <summary>The page of the list that is shown (0 is the first). May be past the last page right after the list shrank; the popup limits it.</summary>
+    public int Page { get; private set; }
 
     /// <inheritdoc />
     public void BindConfig(ConfigFile config)
     {
         _enabled = config.Bind(Name, "Enabled", true,
             "A searchable map list next to the create-room screen's map selector. false = the game's normal screen.");
-        _onlyFavorites = config.Bind(Name, "OnlyFavorites", false, "Show only favourite maps in the list. Also switchable in the panel; remembered.");
-        _onlyMods = config.Bind(Name, "OnlyMods", false, "Show only mod (custom) maps in the list. Also switchable in the panel; remembered.");
-        _sortByName = config.Bind(Name, "SortByName", false, "List maps A to Z instead of in the game's order (favourites always first). Also switchable in the panel; remembered.");
-        _anchor = config.Bind(Name, "PanelAnchor", PanelAnchor.TopLeft, "Which corner or edge of the screen the panel is positioned from.");
-        _offsetX = config.Bind(Name, "PanelOffsetX", 24f, "Panel distance from the anchor, sideways, in pixels at 1080p.");
-        _offsetY = config.Bind(Name, "PanelOffsetY", 120f, "Panel distance from the anchor, up or down, in pixels at 1080p.");
+        _onlyFavorites = config.Bind(Name, "OnlyFavorites", false, "Show only favourite maps in the list. Also switchable in the list; remembered.");
+        _onlyMods = config.Bind(Name, "OnlyMods", false, "Show only mod (custom) maps in the list. Also switchable in the list; remembered.");
+        _sortByName = config.Bind(Name, "SortByName", false, "List maps A to Z instead of in the game's order (favourites always first). Also switchable in the list; remembered.");
+        _buttonPlacement = config.Bind(Name, "ButtonPlacement", ButtonPlacement.Auto,
+            "Where the Browse maps button goes relative to the map selector. Auto = the first of Right, Left and OnLabel where it is fully visible.");
+        _offsetX = config.Bind(Name, "ButtonOffsetX", 0f, "Move the Browse maps button sideways by this many units (negative = left), after it was placed.");
+        _offsetY = config.Bind(Name, "ButtonOffsetY", 0f, "Move the Browse maps button up by this many units (negative = down), after it was placed.");
 
         Query.OnlyFavorites = _onlyFavorites.Value;
         Query.OnlyMods = _onlyMods.Value;
@@ -104,7 +109,7 @@ internal sealed class TrackPickerIntegration : IIntegration
     }
 
     /// <inheritdoc />
-    /// <remarks>The three optional hooks tell the integration when the screen rebuilt its map choices, so the list updates at once.</remarks>
+    /// <remarks>The two optional hooks tell the integration when the screen rebuilt its map choices, so the list updates at once.</remarks>
     public IReadOnlyList<HookSpec> Hooks { get; } = new[]
     {
         new HookSpec(ViewTypeName, GameAssembly, "OnActivated", p => p.Length == 0, PostfixName: nameof(OnActivatedPostfix)),
@@ -118,9 +123,7 @@ internal sealed class TrackPickerIntegration : IIntegration
     {
         Instance = this;
         _favorites = new FavoriteStore(Path.Combine(Paths.ConfigPath, "carx.modmanager.favorite-maps.txt"));
-        bool created = HookInstaller.Install(harmony, log, typeof(TrackPickerIntegration), Hooks);
-        OverlayHost.Register(new TrackPickerPanel(this));
-        return created;
+        return HookInstaller.Install(harmony, log, typeof(TrackPickerIntegration), Hooks);
     }
 
     // ---- hooks --------------------------------------------------------------------------------------------------------
@@ -129,22 +132,35 @@ internal sealed class TrackPickerIntegration : IIntegration
     {
         TrackPickerIntegration? self = Instance;
         if (self == null) return;
-        self._view = __instance;
-        self._dirty = true;
-        self._nextRefresh = 0f;
-        self._optionsLogged = false;
-        self.Query.Search = string.Empty;
-        Plugin.LogSource.LogInfo("TRACKPICKER_OPENED — the create-room screen opened; the map list is available.");
+        try
+        {
+            self._view = __instance;
+            self._dirty = true;
+            self._nextRefresh = 0f;
+            self._optionsLogged = false;
+            self.Query.Search = string.Empty;
+            self.Page = 0;
+            self._buildAttempt = 0;
+            self._buildAt = self._failedOpenings < MaxFailedOpenings && !self._popup.IsBuiltFor(__instance) ? Time.unscaledTime + SettleSeconds : -1f;
+            Plugin.LogSource.LogInfo("TRACKPICKER_OPENED — the create-room screen opened; the Browse maps button will be added.");
+        }
+        catch (Exception exception) { self.ReportError("OnActivated", exception); }
     }
 
     private static void OnDeactivatedPostfix()
     {
         TrackPickerIntegration? self = Instance;
         if (self == null) return;
-        self._view = null;
-        self._options.Clear();
-        self._entries.Clear();
-        self._visible = Array.Empty<int>();
+        try
+        {
+            self._popup.Close();
+            self._view = null;
+            self._buildAt = -1f;
+            self._options.Clear();
+            self._entries.Clear();
+            self._visible = Array.Empty<int>();
+        }
+        catch (Exception exception) { self.ReportError("OnDeactivated", exception); }
     }
 
     private static void OptionsChangedPostfix()
@@ -153,9 +169,10 @@ internal sealed class TrackPickerIntegration : IIntegration
         if (self != null) self._dirty = true;
     }
 
-    // ---- the list ---------------------------------------------------------------------------------------------------
+    // ---- per frame --------------------------------------------------------------------------------------------------------
 
-    /// <summary>Per-frame work while the screen is open: re-read the game's map choices now and then and rebuild the visible list.</summary>
+    /// <inheritdoc />
+    /// <remarks>While the screen is open: adds the button once the screen has settled, re-reads the game's map choices now and then, rebuilds the visible list, and keeps an open list up to date.</remarks>
     public void Update()
     {
         UICreateRTMPRoomContext? view = _view;
@@ -163,6 +180,22 @@ internal sealed class TrackPickerIntegration : IIntegration
         float now = Time.unscaledTime;
         try
         {
+            if (!view.gameObject.activeInHierarchy)
+            {
+                _popup.Close(); // the screen went away without telling us: nothing of ours may stay on screen
+                return;
+            }
+            if (_buildAt >= 0f && now >= _buildAt)
+            {
+                _buildAt = -1f;
+                _buildAttempt++;
+                bool last = _buildAttempt >= BuildAttemptsPerOpening;
+                if (!_popup.TryBuild(view, _buttonPlacement.Value, _offsetX.Value, _offsetY.Value, _buildAttempt, BuildAttemptsPerOpening))
+                {
+                    if (last) _failedOpenings++;
+                    else _buildAt = now + BuildRetrySeconds * _buildAttempt;
+                }
+            }
             if (now >= _nextRefresh)
             {
                 _nextRefresh = now + RefreshSeconds;
@@ -170,12 +203,16 @@ internal sealed class TrackPickerIntegration : IIntegration
                 SelectedId = view.m_trackSelector?.value ?? string.Empty;
             }
             if (_dirty) Rebuild();
+            _popup.Refresh();
         }
         catch (Exception exception)
         {
             ReportError("Update", exception);
         }
     }
+
+    /// <inheritdoc />
+    public void Shutdown() => _popup.Close();
 
     /// <summary>Copies the screen's map choices (id, name, mod or not) and notes whether they changed since last time.</summary>
     private void ReadOptions(UICreateRTMPRoomContext view)
@@ -211,36 +248,63 @@ internal sealed class TrackPickerIntegration : IIntegration
         foreach ((string id, string label, bool isMod) in _options)
             _entries.Add(new TrackEntry { Id = id, Label = isMod ? label + "  (mod)" : label, IsMod = isMod, IsFavorite = _favorites?.Contains(id) ?? false });
         _visible = Query.Apply(_entries);
+        Page = Pager.Clamp(Page, _visible.Length, TrackPickerPopup.PageSize);
     }
 
-    // ---- the panel's actions --------------------------------------------------------------------------------------
+    // ---- the list's actions --------------------------------------------------------------------------------------------
 
-    /// <summary>Sets the search text.</summary>
-    public void SetSearch(string text) { Query.Search = text; _dirty = true; }
+    /// <summary>Sets the search text and goes back to the first page.</summary>
+    public void SetSearch(string text) { Query.Search = text; Page = 0; _dirty = true; }
 
     /// <summary>Shows only favourites (remembered).</summary>
-    public void SetOnlyFavorites(bool value) { Query.OnlyFavorites = value; _onlyFavorites.Value = value; _dirty = true; }
+    public void SetOnlyFavorites(bool value) { Query.OnlyFavorites = value; _onlyFavorites.Value = value; Page = 0; _dirty = true; }
 
     /// <summary>Shows only mod maps (remembered).</summary>
-    public void SetOnlyMods(bool value) { Query.OnlyMods = value; _onlyMods.Value = value; _dirty = true; }
+    public void SetOnlyMods(bool value) { Query.OnlyMods = value; _onlyMods.Value = value; Page = 0; _dirty = true; }
 
     /// <summary>Orders each group A to Z (remembered).</summary>
-    public void SetSortByName(bool value) { Query.SortByName = value; _sortByName.Value = value; _dirty = true; }
+    public void SetSortByName(bool value) { Query.SortByName = value; _sortByName.Value = value; Page = 0; _dirty = true; }
 
-    /// <summary>Marks the map as a favourite, or removes the mark.</summary>
-    public void ToggleFavorite(string id)
+    /// <summary>Goes to the next page (<paramref name="step"/> = 1) or the previous one (-1), staying within the pages that exist.</summary>
+    public void ChangePage(int step) => Page = Pager.Clamp(Page + step, _visible.Length, TrackPickerPopup.PageSize);
+
+    /// <summary>Goes to the page that holds the map the screen has selected (the first page if it is not in the list).</summary>
+    public void GoToSelectedPage()
     {
-        _favorites?.Toggle(id);
+        if (_dirty) Rebuild();
+        int position = Array.FindIndex(_visible, index => index < _entries.Count && _entries[index].Id == SelectedId);
+        Page = position < 0 ? 0 : Pager.PageOf(position, TrackPickerPopup.PageSize);
+    }
+
+    /// <summary>Marks or unmarks the map in row <paramref name="row"/> of the current page as a favourite.</summary>
+    public void ToggleFavoriteOnPage(int row)
+    {
+        if (!TryEntryOnPage(row, out TrackEntry track)) return;
+        _favorites?.Toggle(track.Id);
         _dirty = true;
     }
 
-    /// <summary>Selects the map on the game's screen, exactly as stepping to it with the arrows would.</summary>
-    public void Select(string id)
+    /// <summary>Selects the map in row <paramref name="row"/> of the current page on the game's screen, exactly as stepping to it with the arrows would.</summary>
+    /// <returns><c>true</c> if a map was selected.</returns>
+    public bool SelectOnPage(int row)
     {
-        Plugin.LogSource.LogInfo($"TRACKPICKER_SELECT — selecting '{id}'.");
-        try { _view?.m_trackSelector?.Select(id); }
-        catch (Exception exception) { ReportError("Select", exception); }
-        SelectedId = id;
+        if (!TryEntryOnPage(row, out TrackEntry track)) return false;
+        Plugin.LogSource.LogInfo($"TRACKPICKER_SELECT — selecting '{track.Id}'.");
+        try { _view?.m_trackSelector?.Select(track.Id); }
+        catch (Exception exception) { ReportError("Select", exception); return false; }
+        SelectedId = track.Id;
+        return true;
+    }
+
+    private bool TryEntryOnPage(int row, out TrackEntry track)
+    {
+        track = default;
+        int position = Pager.FirstIndex(Pager.Clamp(Page, _visible.Length, TrackPickerPopup.PageSize), TrackPickerPopup.PageSize) + row;
+        if (row < 0 || row >= TrackPickerPopup.PageSize || position >= _visible.Length) return false;
+        int index = _visible[position];
+        if (index >= _entries.Count) return false;
+        track = _entries[index];
+        return true;
     }
 
     private void ReportError(string where, Exception exception)
@@ -248,6 +312,10 @@ internal sealed class TrackPickerIntegration : IIntegration
         _errors++;
         if (_errors <= 3) Plugin.LogSource.LogError($"TRACKPICKER_ERROR — {where}: {exception}");
         if (_errors == ErrorsBeforeStandingDown)
+        {
             Plugin.LogSource.LogError("TRACKPICKER_STOOD_DOWN — too many errors; the map list is off for this session and the game's own selector is left alone.");
+            _popup.Remove();
+            IntegrationHealth.Report(Name, "stopped after errors");
+        }
     }
 }

@@ -4,6 +4,8 @@
     <ProjectReference Include="../Binding/Binding.csproj" />
     <ProjectReference Include="../CarX.Common.Base/CarX.Common.Base.csproj" />
     <ProjectReference Include="../Il2Cppmscorlib/Il2Cppmscorlib.csproj" />
+    <ProjectReference Include="../Unity.TextMeshPro/Unity.TextMeshPro.csproj" />
     <ProjectReference Include="../UnityEngine.CoreModule/UnityEngine.CoreModule.csproj" />
+    <ProjectReference Include="../UnityEngine.UI/UnityEngine.UI.csproj" />
   </ItemGroup>
 </Project>

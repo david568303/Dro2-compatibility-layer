@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Unity.InputSystem</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Il2Cppmscorlib/Il2Cppmscorlib.csproj" />
+  </ItemGroup>
+</Project>

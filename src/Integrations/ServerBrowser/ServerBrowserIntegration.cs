@@ -6,7 +6,7 @@ using CarX.Game.DR3Console.Tournament.UI.Contexts;
 using HarmonyLib;
 using CarXModManager.Il2Cpp;
 using CarXModManager.Logic;
-using CarXModManager.Overlay;
+using CarXModManager.Ui;
 using UnityEngine;
 using Il2CppRooms = Il2CppSystem.Collections.Generic.IEnumerable<Binding.ListElementData>;
 
@@ -15,7 +15,7 @@ namespace CarXModManager.Integrations.ServerBrowser;
 /// <summary>
 /// Upgrades the server browser (the lobby's list of rooms):
 /// <list type="bullet">
-/// <item>a search box and "hide full / empty / locked" switches that work instantly on every loaded room, instead of
+/// <item>a search button and "hide full / empty / locked" switches that work instantly on every loaded room, instead of
 /// the game's server-side filters on a separate screen;</item>
 /// <item>extra sort orders (most players, free slots, name, map, region, lowest ping) on top of the game's ping / players /
 /// track headers;</item>
@@ -26,7 +26,8 @@ namespace CarXModManager.Integrations.ServerBrowser;
 /// prefix on that method replaces <c>rooms</c> with the filtered and sorted subset before the game draws it, and keeps the
 /// full list so a change of search text can redraw without asking the server again. Further pages are requested by
 /// invoking the view's <c>scrollRectValueChanged</c> event, which is what the game's own controller listens to when the
-/// player scrolls to the bottom. The panel (<see cref="ServerBrowserPanel"/>) holds the controls.
+/// player scrolls to the bottom. The controls are real buttons added to the game's own screen
+/// (<see cref="ServerBrowserBar"/>), built only after a checklist of the screen's structure passed.
 /// </summary>
 internal sealed class ServerBrowserIntegration : IIntegration
 {
@@ -35,6 +36,18 @@ internal sealed class ServerBrowserIntegration : IIntegration
 
     /// <summary>Seconds to wait after the last change of the search text before redrawing the list (so typing stays smooth).</summary>
     private const float RefilterDelaySeconds = 0.15f;
+
+    /// <summary>Seconds after the screen opens before the controls are added, so the game has finished arranging (and animating) the screen.</summary>
+    private const float SettleSeconds = 0.4f;
+
+    /// <summary>Tries to add the control bar each time the screen opens; a screen that is still sliding in can fail a check that passes a moment later.</summary>
+    private const int BarAttemptsPerOpening = 3;
+
+    /// <summary>Seconds between those tries, multiplied by the number of tries so far.</summary>
+    private const float BarRetrySeconds = 1f;
+
+    /// <summary>Openings of the screen whose every try failed, after which the bar is not tried again this session (each was logged with what was missing).</summary>
+    private const int MaxFailedOpenings = 3;
 
     /// <summary>Hook errors after which the integration stops touching the game's list.</summary>
     private const int ErrorsBeforeStandingDown = 5;
@@ -45,20 +58,29 @@ internal sealed class ServerBrowserIntegration : IIntegration
     private ConfigEntry<bool> _enabled = null!, _hideFull = null!, _hideEmpty = null!, _hideLocked = null!, _loadAll = null!;
     private ConfigEntry<RoomSort> _sort = null!;
     private ConfigEntry<int> _maxPages = null!;
-    private ConfigEntry<PanelAnchor> _anchor = null!;
-    private ConfigEntry<float> _offsetX = null!, _offsetY = null!;
+    private ConfigEntry<bool> _showBar = null!;
+    private ConfigEntry<BarPlacement> _barPlacement = null!;
 
     private UILobbyRoomBrowserContext? _view;
     private LobbyRoomBrowserState _browserState = LobbyRoomBrowserState.Loading;
     private bool _browserStateKnown;
     private int _listedLogs;
-    private Il2CppRooms? _fullList;
+    private bool _listKindLogged;
+    private bool _unsupportedListLogged;
+    private readonly List<ListElementData> _gameRooms = new();
     private Il2CppRooms? _placeholders;
     private bool _refilling;
     private float _refilterAt = -1f;
+    private float _buildBarAt = -1f;
+    private int _barAttempt;
+    private int _failedOpenings;
     private int _errors;
 
     private readonly PageLoader _pages = new();
+    private readonly ServerBrowserBar _bar;
+
+    /// <summary>Creates the integration (its hooks and controls are set up later, by <see cref="Install"/>).</summary>
+    public ServerBrowserIntegration() => _bar = new ServerBrowserBar(this);
 
     /// <inheritdoc />
     public string Name => "ServerBrowser";
@@ -81,42 +103,24 @@ internal sealed class ServerBrowserIntegration : IIntegration
     /// <summary>True when the player asked for every page to be loaded automatically.</summary>
     public bool LoadsAllRooms => _loadAll.Value;
 
-    /// <summary>True while the server browser screen is open and nothing is drawn over it.</summary>
-    public bool IsPanelVisible
-    {
-        get
-        {
-            UILobbyRoomBrowserContext? view = _view;
-            if (view == null) return false; // never opened, or destroyed by a scene change without a deactivation
-            try { return !view.blockedByAnotherContext; }
-            catch (Exception) { return true; }
-        }
-    }
-
-    /// <summary>Where the panel sits (from the config); setting it remembers the new position (the player dragged the panel).</summary>
-    public PanelPlacement Placement
-    {
-        get => new(_anchor.Value, _offsetX.Value, _offsetY.Value);
-        set { _offsetX.Value = value.OffsetX; _offsetY.Value = value.OffsetY; }
-    }
-
     /// <inheritdoc />
     public void BindConfig(ConfigFile config)
     {
         _enabled = config.Bind(Name, "Enabled", true,
             "Search, filters, extra sort orders and automatic loading of all rooms in the server browser. false = the game's normal server browser.");
-        _hideFull = config.Bind(Name, "HideFull", false, "Hide rooms that have no free slot. Also switchable in the panel; remembered.");
-        _hideEmpty = config.Bind(Name, "HideEmpty", false, "Hide rooms with nobody in them. Also switchable in the panel; remembered.");
-        _hideLocked = config.Bind(Name, "HideLocked", false, "Hide rooms that need a password. Also switchable in the panel; remembered.");
+        _hideFull = config.Bind(Name, "HideFull", false, "Hide rooms that have no free slot. Also switchable in the control bar; remembered.");
+        _hideEmpty = config.Bind(Name, "HideEmpty", false, "Hide rooms with nobody in them. Also switchable in the control bar; remembered.");
+        _hideLocked = config.Bind(Name, "HideLocked", false, "Hide rooms that need a password. Also switchable in the control bar; remembered.");
         _sort = config.Bind(Name, "Sort", RoomSort.Server,
             "Extra sort order. Server = the order of the game's own sort header (ping, players or track). Also selectable in the panel; remembered.");
         _loadAll = config.Bind(Name, "LoadAllRooms", true,
             "Keep loading pages of rooms until every room is loaded, so the search and switches see all of them. false = the game's normal scroll-to-load.");
         _maxPages = config.Bind(Name, "MaxPagesToLoad", 30,
             new ConfigDescription("Most extra pages loaded automatically (a safety limit).", new AcceptableValueRange<int>(1, 200)));
-        _anchor = config.Bind(Name, "PanelAnchor", PanelAnchor.TopRight, "Which corner or edge of the screen the panel is positioned from.");
-        _offsetX = config.Bind(Name, "PanelOffsetX", 24f, "Panel distance from the anchor, sideways, in pixels at 1080p.");
-        _offsetY = config.Bind(Name, "PanelOffsetY", 24f, "Panel distance from the anchor, up or down, in pixels at 1080p.");
+        _showBar = config.Bind(Name, "ShowControlBar", true,
+            "Add the control bar (search, switches, sort) to the server browser screen. false = no bar; the other features (loading all rooms) still work.");
+        _barPlacement = config.Bind(Name, "BarPlacement", BarPlacement.Auto,
+            "Where the control bar goes. Auto = in a strip below the room list (or at the bottom of the screen if the game's layout does not allow resizing the list). BelowList, AboveList, ScreenBottom and ScreenTop force one place.");
 
         Query.HideFull = _hideFull.Value;
         Query.HideEmpty = _hideEmpty.Value;
@@ -141,9 +145,7 @@ internal sealed class ServerBrowserIntegration : IIntegration
     public bool Install(Harmony harmony, ManualLogSource log)
     {
         Instance = this;
-        bool created = HookInstaller.Install(harmony, log, typeof(ServerBrowserIntegration), Hooks);
-        OverlayHost.Register(new ServerBrowserPanel(this));
-        return created;
+        return HookInstaller.Install(harmony, log, typeof(ServerBrowserIntegration), Hooks);
     }
 
     // ---- hooks --------------------------------------------------------------------------------------------------------
@@ -184,21 +186,28 @@ internal sealed class ServerBrowserIntegration : IIntegration
 
     /// <summary>
     /// The game is about to draw <paramref name="source"/>: note what it holds, and when the player has a search, a switch
-    /// or a sort set, replace it with the matching rooms in the chosen order.
+    /// or a sort set, replace it with the matching rooms in the chosen order. A list of a kind this code cannot read is left
+    /// to the game, unchanged.
     /// </summary>
     private void OnFillRoomList(UILobbyRoomBrowserContext view, ref Il2CppRooms source, Il2CppRooms placeholders)
     {
         _view = view;
-        List<ListElementData> items = Il2CppCollections.ToManagedList(source);
+        var items = new List<ListElementData>();
+        if (source != null && !TryReadRooms(source, items))
+        {
+            LogUnsupportedListOnce(source);
+            return;
+        }
+
         var rows = new List<RoomRow>(items.Count);
         foreach (ListElementData item in items)
         {
-            LobbyRoomPreviewData? room = item?.TryCast<LobbyRoomPreviewData>();
+            LobbyRoomPreviewData? room = item.TryCast<LobbyRoomPreviewData>();
             if (room == null) return; // not a list of rooms: leave the game's list alone
             rows.Add(ReadRow(room));
         }
 
-        if (!_refilling) NoteListedByGame(rows.Count, source, placeholders);
+        if (!_refilling) NoteListedByGame(items, placeholders);
 
         int[] order = Query.Apply(rows);
         if (_listedLogs < 25 && (rows.Count != TotalRooms || order.Length != ShownRooms || _listedLogs == 0))
@@ -213,6 +222,29 @@ internal sealed class ServerBrowserIntegration : IIntegration
         var shown = new List<ListElementData>(order.Length);
         foreach (int index in order) shown.Add(items[index]);
         source = Il2CppCollections.ToIl2CppEnumerable(shown);
+    }
+
+    /// <summary>
+    /// Copies the rooms out of the game's list. The game builds it as a list of rooms or of the general list-element type
+    /// (the first is a list of the second's subtype), so both are tried. False if it is some other kind of collection.
+    /// </summary>
+    private bool TryReadRooms(Il2CppRooms source, List<ListElementData> rooms)
+    {
+        bool read = Il2CppCollections.TryCopyList<LobbyRoomPreviewData, ListElementData>(source, rooms)
+                    || Il2CppCollections.TryCopyList<ListElementData, ListElementData>(source, rooms);
+        if (read && !_listKindLogged)
+        {
+            _listKindLogged = true;
+            Plugin.LogSource.LogInfo($"SERVERBROWSER_LIST_KIND — the game passes its rooms as {Il2CppCollections.DescribeType(source)}.");
+        }
+        return read;
+    }
+
+    private void LogUnsupportedListOnce(Il2CppRooms source)
+    {
+        if (_unsupportedListLogged) return;
+        _unsupportedListLogged = true;
+        Plugin.LogSource.LogWarning($"SERVERBROWSER_UNSUPPORTED_LIST — the game passes its rooms as {Il2CppCollections.DescribeType(source)}, which this version cannot read; the game's own list is left alone, so search and filters have no effect.");
     }
 
     /// <summary>The facts about one room that the search, switches and sort use.</summary>
@@ -234,10 +266,11 @@ internal sealed class ServerBrowserIntegration : IIntegration
     }
 
     /// <summary>Remembers the game's full list (to redraw it later) and lets the page loader see that rooms arrived.</summary>
-    private void NoteListedByGame(int total, Il2CppRooms source, Il2CppRooms placeholders)
+    private void NoteListedByGame(List<ListElementData> rooms, Il2CppRooms placeholders)
     {
-        _pages.OnListed(total, Time.unscaledTime);
-        _fullList = source;
+        _pages.OnListed(rooms.Count, Time.unscaledTime);
+        _gameRooms.Clear();
+        _gameRooms.AddRange(rooms);
         _placeholders = placeholders;
     }
 
@@ -251,19 +284,27 @@ internal sealed class ServerBrowserIntegration : IIntegration
         _browserState = LobbyRoomBrowserState.Loading;
         _browserStateKnown = false;
         _listedLogs = 0;
-        Plugin.LogSource.LogInfo($"SERVERBROWSER_OPENED — the server browser opened; search and filters are available (load all pages: {_loadAll.Value}).");
+        _gameRooms.Clear();
+        _barAttempt = 0;
+        _buildBarAt = _showBar.Value && _failedOpenings < MaxFailedOpenings && !_bar.IsBuiltFor(view) ? Time.unscaledTime + SettleSeconds : -1f;
+        Plugin.LogSource.LogInfo($"SERVERBROWSER_OPENED — the server browser opened (control bar: {(_showBar.Value ? "will be added" : "off")}, load all pages: {_loadAll.Value}).");
     }
 
     private void OnClosed()
     {
         Plugin.LogSource.LogInfo($"SERVERBROWSER_CLOSED — {TotalRooms} rooms were loaded, {_pages.PagesRequested} extra page(s) requested.");
+        _bar.EndSearch();
         _view = null;
-        _fullList = null;
+        _gameRooms.Clear();
         _placeholders = null;
         _refilterAt = -1f;
+        _buildBarAt = -1f;
     }
 
-    // ---- the panel's actions --------------------------------------------------------------------------------------
+    /// <summary>Ends anything the integration has running (the game is closing or the mod manager is unloading).</summary>
+    public void Shutdown() => _bar.EndSearch();
+
+    // ---- the bar's actions --------------------------------------------------------------------------------------
 
     /// <summary>Sets the search text; the list is redrawn shortly after the player stops typing.</summary>
     public void SetSearch(string text)
@@ -305,13 +346,29 @@ internal sealed class ServerBrowserIntegration : IIntegration
 
     // ---- per frame ---------------------------------------------------------------------------------------------------
 
-    /// <summary>Per-frame work: redraw the list after the search changed, and request the next page of rooms if needed.</summary>
+    /// <summary>Per-frame work: add the control bar once the screen has settled, keep it up to date, redraw the list after the search changed, and request the next page of rooms if needed.</summary>
     public void Update()
     {
-        if (_view == null) return;
+        UILobbyRoomBrowserContext? view = _view;
+        if (view == null) return;
         float now = Time.unscaledTime;
         try
         {
+            if (_buildBarAt >= 0f && now >= _buildBarAt)
+            {
+                _buildBarAt = -1f;
+                if (view.gameObject.activeInHierarchy)
+                {
+                    _barAttempt++;
+                    bool last = _barAttempt >= BarAttemptsPerOpening;
+                    if (!_bar.TryBuild(view, _barPlacement.Value, _barAttempt, BarAttemptsPerOpening))
+                    {
+                        if (last) _failedOpenings++;
+                        else _buildBarAt = now + BarRetrySeconds * _barAttempt;
+                    }
+                }
+            }
+            _bar.Refresh(view);
             if (_refilterAt >= 0f && now >= _refilterAt)
             {
                 _refilterAt = -1f;
@@ -325,14 +382,17 @@ internal sealed class ServerBrowserIntegration : IIntegration
         }
     }
 
-    /// <summary>Draws the game's full list again through the hook, so the current search and switches are applied.</summary>
+    /// <summary>
+    /// Draws the game's full list again through the hook, so the current search and switches are applied. The list is rebuilt from
+    /// the copy made when the game last listed its rooms, so it does not matter if the game has reused its own list since.
+    /// </summary>
     private void Refill()
     {
         UILobbyRoomBrowserContext? view = _view;
-        Il2CppRooms? full = _fullList, placeholders = _placeholders;
-        if (view == null || full == null || placeholders == null) return;
+        Il2CppRooms? placeholders = _placeholders;
+        if (view == null || placeholders == null || _gameRooms.Count == 0) return;
         _refilling = true;
-        try { view.FillRoomList(full, placeholders); }
+        try { view.FillRoomList(Il2CppCollections.ToIl2CppEnumerable(_gameRooms), placeholders); }
         finally { _refilling = false; }
     }
 
