@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>UnityEngine.IMGUIModule</AssemblyName></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Core/UnityEngine.CoreModule.csproj" /></ItemGroup>
+</Project>

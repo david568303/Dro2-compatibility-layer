@@ -9,6 +9,15 @@ game once, so the Unity-facing calls (IMGUI in `src/Ui.cs`, the New Input System
 a build against the real interop succeeds. Send the compiler output and `LogOutput.log` back and it gets fixed
 from there.
 
+## Download
+
+Every push to `main` builds the plugin on GitHub Actions and refreshes the **latest** pre-release in this repo's
+Releases. Extract `CarXModManager.zip` into the game folder (it holds
+`BepInEx/plugins/CarXModManager/CarXModManager.dll`). CI has no access to the game's interop assemblies, so it
+compiles against stand-ins in `ci/UnityStubs/` with the same assembly names and member shapes; the DLL binds to
+the real ones when the game loads it. Those stand-ins are written from knowledge of Unity's API, so a wrong
+signature shows up as a `MissingMethodException` / `CARXMM_FAULT` line in `LogOutput.log`, not as a build error.
+
 ## What milestone 1 does
 
 - Overlay opened with **Delete** (configurable; avoid Home, which ReShade uses). Drawn with Unity IMGUI inside

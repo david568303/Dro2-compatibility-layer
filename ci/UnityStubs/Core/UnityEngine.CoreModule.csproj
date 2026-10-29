@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>UnityEngine.CoreModule</AssemblyName></PropertyGroup>
+</Project>

@@ -10,6 +10,8 @@
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <NoWarn>$(NoWarn);NU1603</NoWarn>
+    <!-- ci/ holds the CI-only Unity stand-ins; out/ is build output. Neither belongs in the plugin. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);ci/**;out/**</DefaultItemExcludes>
     <GameDirectory Condition="'$(GameDirectory)' == ''">D:/SteamLibrary/steamapps/common/CarX Drift Racing Online 2</GameDirectory>
     <GameInteropDirectory Condition="'$(GameInteropDirectory)' == ''">$(GameDirectory)/BepInEx/interop</GameInteropDirectory>
     <BepInExCoreDirectory Condition="'$(BepInExCoreDirectory)' == ''">$(GameDirectory)/BepInEx/core</BepInExCoreDirectory>

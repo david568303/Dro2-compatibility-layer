@@ -1,0 +1,56 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # The game's interop assemblies cannot be published, so compile against stand-ins that carry the same
+      # assembly names and member shapes. The resulting DLL binds to the real ones inside the game.
+      - name: Build Unity stand-ins
+        run: |
+          for p in Core/UnityEngine.CoreModule Imgui/UnityEngine.IMGUIModule Input/Unity.InputSystem; do
+            dotnet build "ci/UnityStubs/$p.csproj" -c Release -o ci/stubs-out
+          done
+
+      - name: Build plugin
+        run: >
+          dotnet build CarXModManager.csproj -c Release -o out
+          -p:UseBepInExPackages=true
+          -p:GameInteropDirectory="$GITHUB_WORKSPACE/ci/stubs-out"
+
+      - name: Package
+        run: |
+          mkdir -p package/BepInEx/plugins/CarXModManager
+          cp out/CarXModManager.dll package/BepInEx/plugins/CarXModManager/
+          (cd package && zip -r ../CarXModManager.zip BepInEx)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CarXModManager
+          path: |
+            out/CarXModManager.dll
+            CarXModManager.zip
+
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest CarXModManager.zip out/CarXModManager.dll \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "CarX Mod Manager (CI build, not yet tested in-game)" \
+            --notes "Built from $GITHUB_SHA against stand-in Unity assemblies, so the Unity-facing calls are unverified until it runs in the game. Extract CarXModManager.zip into the game folder (it contains BepInEx/plugins/CarXModManager/CarXModManager.dll), launch, press Delete, and check BepInEx/LogOutput.log for CARXMM_LOADED and CARXMM_ONGUI_FIRED."

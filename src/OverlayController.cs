@@ -22,6 +22,9 @@ internal static class OverlayController
     private static int _logVersion = -1;
     private static bool _onGuiLogged;
     private static bool _hotkeyWarned;
+    private static string? _keyName;
+    private static Key _key;
+    private static bool _keyValid;
     private static bool _stopped;
     private static int _faults;
     private static CursorLockMode _previousLock;
@@ -62,8 +65,8 @@ internal static class OverlayController
         try
         {
             Keyboard? keyboard = Keyboard.current;
-            Key key = Plugin.ToggleKey.Value;
-            return keyboard != null && key != Key.None && keyboard[key].wasPressedThisFrame;
+            if (keyboard == null || !TryGetToggleKey(out Key key)) return false;
+            return keyboard[key].wasPressedThisFrame;
         }
         catch (Exception exception)
         {
@@ -74,6 +77,20 @@ internal static class OverlayController
             }
             return false;
         }
+    }
+
+    private static bool TryGetToggleKey(out Key key)
+    {
+        string name = Plugin.ToggleKey.Value.Trim();
+        if (name != _keyName)
+        {
+            _keyName = name;
+            // (int)0 is Key.None. Checked by value so the DLL never depends on the enum's member numbers.
+            _keyValid = Enum.TryParse(name, true, out _key) && (int)_key != 0;
+            if (!_keyValid) Plugin.Logger.LogWarning($"CARXMM_KEY_INVALID — '{name}' is not a key name; the overlay cannot be opened until ToggleKey is fixed.");
+        }
+        key = _key;
+        return _keyValid;
     }
 
     private static void SetOpen(bool open)
