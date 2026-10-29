@@ -30,12 +30,17 @@ internal static class OverlayController
     private static int _faults;
     private static CursorLockMode _previousLock;
     private static bool _previousVisible;
+    private static bool _rebinding;
+    private static Mouse? _capturedMouse;
+    private static bool _mouseWarned;
+    private static Key[]? _bindableKeys;
 
     public static bool Open { get; private set; }
 
     public static void Tick()
     {
         if (_stopped) return;
+        if (_rebinding) { PollRebind(); return; }
         if (HotkeyPressed()) SetOpen(!Open);
     }
 
@@ -103,13 +108,97 @@ internal static class OverlayController
             _previousLock = Cursor.lockState;
             _previousVisible = Cursor.visible;
             Rescan();
+            if (Plugin.BlockGameMouse.Value) CaptureMouse(true);
         }
         else
         {
+            _rebinding = false;
+            CaptureMouse(false);
             Cursor.lockState = _previousLock;
             Cursor.visible = _previousVisible;
         }
         Plugin.Logger.LogInfo(open ? "CARXMM_OPEN" : "CARXMM_CLOSED");
+    }
+
+    /// <summary>
+    /// "Hijacks" the mouse: while the overlay is open the game's Mouse device is disabled in the Input System, so
+    /// clicks, movement and scrolling no longer reach the game. IMGUI keeps working because it is fed by the native
+    /// event queue, not by that device. Always re-enabled on close, on Unload and on game exit.
+    /// </summary>
+    private static void CaptureMouse(bool capture)
+    {
+        try
+        {
+            if (capture)
+            {
+                Mouse? mouse = Mouse.current;
+                if (mouse == null || _capturedMouse != null) return;
+                try { InputSystem.DisableDevice(mouse, false); }
+                catch (MissingMethodException) { InputSystem.DisableDevice(mouse); }
+                _capturedMouse = mouse;
+            }
+            else if (_capturedMouse != null)
+            {
+                InputSystem.EnableDevice(_capturedMouse);
+                _capturedMouse = null;
+            }
+        }
+        catch (Exception exception)
+        {
+            if (_mouseWarned) return;
+            _mouseWarned = true;
+            Plugin.Logger.LogWarning($"CARXMM_MOUSE_CAPTURE_FAILED — the game will still see the mouse. {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    public static void BeginRebind() => _rebinding = true;
+
+    private static void PollRebind()
+    {
+        try
+        {
+            Keyboard? keyboard = Keyboard.current;
+            if (keyboard == null) return;
+            _bindableKeys ??= Enum.GetValues(typeof(Key)).Cast<Key>()
+                .Where(key => (int)key != 0 && key.ToString() != "IMESelected")
+                .Distinct()
+                .ToArray();
+            foreach (Key key in _bindableKeys)
+            {
+                if (!keyboard[key].wasPressedThisFrame) continue;
+                _rebinding = false;
+                if (key.ToString() == "Escape") return; // cancel
+                Plugin.ToggleKey.Value = key.ToString();
+                Plugin.Logger.LogInfo($"CARXMM_KEY_BOUND — toggle key is now {KeyLabel()}");
+                return;
+            }
+        }
+        catch (Exception exception)
+        {
+            _rebinding = false;
+            Plugin.Logger.LogWarning($"CARXMM_REBIND_FAILED — {exception.GetType().Name}: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// The configured key as both its Input System name and the label the current keyboard layout gives it, so
+    /// "Delete" vs "Supr" is never guesswork (e.g. Key.Delete vs the numpad's Key.NumpadPeriod).
+    /// </summary>
+    private static string KeyLabel()
+    {
+        string name = Plugin.ToggleKey.Value.Trim();
+        try
+        {
+            Keyboard? keyboard = Keyboard.current;
+            if (keyboard != null && TryGetToggleKey(out Key key))
+            {
+                string shown = keyboard[key].displayName;
+                if (!string.IsNullOrWhiteSpace(shown) && !string.Equals(shown, name, StringComparison.OrdinalIgnoreCase))
+                    return $"{name} (your keyboard calls it \"{shown}\")";
+            }
+        }
+        catch { /* label only */ }
+        return name;
     }
 
     private static void Rescan()
@@ -149,20 +238,16 @@ internal static class OverlayController
 
     private static void DrawWindow(float width, float height)
     {
-        float w = Mathf.Min(980f, width - 40f);
-        float h = Mathf.Min(640f, height - 40f);
-        var window = new Rect((width - w) / 2f, (height - h) / 2f, w, h);
-        GUI.Box(window, string.Empty);
-        GUI.Box(window, string.Empty); // second pass so the text behind stays readable
+        float w = Mathf.Min(960f, width - 40f);
+        float h = Mathf.Min(620f, height - 40f);
+        Ui.BeginPanel(new Rect((width - w) / 2f, (height - h) / 2f, w, h));
 
-        Ui.BeginArea(new Rect(window.x + 12f, window.y + 10f, window.width - 24f, window.height - 20f));
-        Ui.Label($"CarX Mod Manager v{Plugin.PluginVersion}   |   {Plugin.ToggleKey.Value} closes", Dim);
-
+        Ui.Title($"CARX MOD MANAGER   v{Plugin.PluginVersion}");
         Ui.BeginHorizontal();
         for (int i = 0; i < TabNames.Length; i++)
-            if (Ui.Button(i == _tab ? $"[ {TabNames[i]} ]" : TabNames[i])) _tab = i;
+            if (Ui.Button(TabNames[i], i == _tab)) _tab = i;
         Ui.EndHorizontal();
-        Ui.Space(6f);
+        Ui.Space(4f);
 
         switch (_tab)
         {
@@ -172,7 +257,10 @@ internal static class OverlayController
             case 3: DrawLog(); break;
             default: DrawSettings(); break;
         }
-        Ui.EndArea();
+
+        Ui.Space(2f);
+        Ui.Label($"{Plugin.ToggleKey.Value} closes   |   mouse is captured while this is open", Dim);
+        Ui.EndPanel();
     }
 
     private static void DrawMods()
@@ -181,7 +269,7 @@ internal static class OverlayController
         Ui.Label("v0.1 lists loaded mods. Turning mods on/off from here needs the preloader step (next milestone).", Dim);
         foreach (ModEntry mod in _mods)
         {
-            Ui.BeginBox();
+            Ui.BeginCard();
             Ui.BeginHorizontal();
             Ui.Label($"{mod.Name}  v{mod.Version}");
             Ui.Flex();
@@ -197,7 +285,7 @@ internal static class OverlayController
             if (mod.Dependencies.Length > 0) Ui.Label($"needs: {mod.Dependencies}", Dim);
             if (Plugin.OnlineSafeMode.Value && mod.Impact != ModImpact.Cosmetic)
                 Ui.Label("online-safe: not declared cosmetic, so it would be kept out of online play", Warn);
-            Ui.EndVertical();
+            Ui.EndCard();
         }
         Ui.EndScroll();
     }
@@ -212,14 +300,14 @@ internal static class OverlayController
         {
             string key = panel.ModGuid + "/" + panel.Title;
             bool expanded = ExpandedPanels.Contains(key);
-            Ui.BeginBox();
+            Ui.BeginCard();
             Ui.BeginHorizontal();
             bool now = Ui.Toggle(expanded, $"{panel.Title}  ({panel.ModGuid})");
             if (now != expanded) { if (now) ExpandedPanels.Add(key); else ExpandedPanels.Remove(key); }
             if (panel.Isolated && Ui.Button("Re-enable")) { panel.Isolated = false; panel.Errors = 0; }
             Ui.EndHorizontal();
             if (now) DrawPanelBody(panel);
-            Ui.EndVertical();
+            Ui.EndCard();
         }
         Ui.EndScroll();
     }
@@ -257,12 +345,12 @@ internal static class OverlayController
             Ui.Label("No Harmony conflicts found. Hooks installed by other means are not visible here.", Good);
         foreach (PatchConflict conflict in _conflicts)
         {
-            Ui.BeginBox();
+            Ui.BeginCard();
             Ui.Label(conflict.Method);
             Ui.Label("owners: " + string.Join(", ", conflict.Owners), Dim);
             if (conflict.CanSkipOriginal)
                 Ui.Label("a prefix can skip the original method: the other mods may never run", Bad);
-            Ui.EndVertical();
+            Ui.EndCard();
         }
         Ui.EndScroll();
     }
@@ -283,16 +371,31 @@ internal static class OverlayController
     private static void DrawSettings()
     {
         _settingsScroll = Ui.BeginScroll(_settingsScroll);
-        Plugin.OnlineSafeMode.Value = Ui.Toggle(Plugin.OnlineSafeMode.Value, "Online-safe mode (flag mods not declared cosmetic)");
-        Ui.Label($"UI scale: {Plugin.UiScale.Value:0.00}");
+
+        Ui.BeginCard();
+        Ui.Label("Menu key");
+        Ui.Label(_rebinding ? "Press the new key now...  (Esc cancels)" : $"Toggle key: {KeyLabel()}", _rebinding ? Warn : Dim);
+        if (!_rebinding && Ui.Button("Change key")) BeginRebind();
+        Ui.EndCard();
+
+        Ui.BeginCard();
+        Ui.Label("Behaviour");
+        Plugin.BlockGameMouse.Value = Ui.Toggle(Plugin.BlockGameMouse.Value, "Capture mouse while open");
+        Plugin.OnlineSafeMode.Value = Ui.Toggle(Plugin.OnlineSafeMode.Value, "Online-safe mode");
+        Ui.Label($"UI scale: {Plugin.UiScale.Value:0.00}", Dim);
         float scale = Ui.Slider(Plugin.UiScale.Value, 0.5f, 2.5f);
         if (!Mathf.Approximately(scale, Plugin.UiScale.Value)) Plugin.UiScale.Value = scale;
-        Ui.Space(8f);
-        Ui.Label($"Toggle key: {Plugin.ToggleKey.Value}  (edit BepInEx/config/{Plugin.PluginGuid}.cfg)", Dim);
+        Ui.EndCard();
+
+        Ui.BeginCard();
+        Ui.Label("About");
         Ui.Label($"Graphics API: {SystemInfo.graphicsDeviceType}", Dim);
         Ui.Label($"Unity {Application.unityVersion}   game {Application.version}", Dim);
         Ui.Label($"Manager v{Plugin.PluginVersion}   mod API v{ModManagerApi.ApiVersion}", Dim);
         Ui.Label($"IMGUI primitives unavailable in this build: {Ui.MissingSummary}", Dim);
+        Ui.Label($"Theme: {(Theme.Ready ? "flat" : "plain (styling unavailable)")}", Dim);
+        Ui.EndCard();
+
         Ui.EndScroll();
     }
 }

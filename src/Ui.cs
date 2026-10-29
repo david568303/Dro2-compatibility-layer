@@ -8,7 +8,8 @@ namespace CarXModManager;
 /// (Il2CppInterop reports "Method unstripping failed" or a missing method for those).
 /// <list type="bullet">
 /// <item>Every call is guarded: the first time one is unavailable it is logged once and from then on skipped,
-/// with a fallback where one exists (Toggle becomes a button, Slider becomes - / + buttons).</item>
+/// with a fallback where one exists (styled controls fall back to plain ones, Toggle becomes a button, Slider
+/// becomes - / + buttons).</item>
 /// <item>Every call passes an explicit (empty) options array, because the interop assemblies do not reliably keep
 /// GUILayout's "params".</item>
 /// <item>Begin/End calls are tracked so a group left open by an exception can be closed at the end of the frame;
@@ -51,9 +52,21 @@ internal static class Ui
         catch (Exception exception) when (IsUnavailable(exception)) { MarkMissing(name, exception); return false; }
     }
 
+    /// <summary>Runs a call that needs the theme; false means "use the plain version instead".</summary>
+    private static bool Styled(string name, Action call)
+    {
+        if (!Theme.Ready || Missing.Contains(name)) return false;
+        try { call(); return true; }
+        catch (Exception exception) when (IsUnavailable(exception)) { MarkMissing(name, exception); return false; }
+    }
+
     // ---- controls -----------------------------------------------------------------------------------------
 
-    public static void Label(string text) => Run("Label", () => GUILayout.Label(text, None));
+    public static void Label(string text)
+    {
+        if (Styled("LabelStyled", () => GUILayout.Label(text, Theme.Text!, None))) return;
+        Run("Label", () => GUILayout.Label(text, None));
+    }
 
     public static void Label(string text, Color color)
     {
@@ -63,17 +76,30 @@ internal static class Ui
         finally { GUI.contentColor = previous; }
     }
 
-    public static bool Button(string text) => TryRun("Button", () => GUILayout.Button(text, None), out bool clicked) && clicked;
+    /// <summary>The big accent-coloured bar at the top of the window.</summary>
+    public static void Title(string text)
+    {
+        if (Styled("TitleStyled", () => GUILayout.Label(text, Theme.Title!, None))) return;
+        Label(text);
+    }
+
+    public static bool Button(string text, bool active = false)
+    {
+        bool clicked = false;
+        if (Styled("ButtonStyled", () => clicked = GUILayout.Button(text, active ? Theme.TabActive! : Theme.Tab!, None))) return clicked;
+        return TryRun("Button", () => GUILayout.Button(text, None), out bool plain) && plain;
+    }
 
     public static bool Toggle(bool value, string text)
     {
+        if (Theme.Ready) return Button($"{text}: {(value ? "ON" : "OFF")}", value) ? !value : value;
         if (TryRun("Toggle", () => GUILayout.Toggle(value, text, None), out bool result)) return result;
         return Button($"[{(value ? "x" : " ")}] {text}") ? !value : value;
     }
 
     public static float Slider(float value, float min, float max)
     {
-        if (TryRun("Slider", () => GUILayout.HorizontalSlider(value, min, max, None), out float result)) return result;
+        if (!Theme.Ready && TryRun("Slider", () => GUILayout.HorizontalSlider(value, min, max, None), out float result)) return result;
         float step = (max - min) / 10f;
         BeginHorizontal();
         if (Button("-")) value -= step;
@@ -123,13 +149,44 @@ internal static class Ui
     public static void BeginArea(Rect area) => BeginGroup('A', "BeginArea", () => GUILayout.BeginArea(area));
     public static void EndArea() => EndGroup('A', "EndArea", () => GUILayout.EndArea());
 
-    /// <summary>A vertical group with a dim rule above it. (GUILayout's styled "box" overloads take a GUIStyle, which we avoid.)</summary>
-    public static void BeginBox()
+    /// <summary>The window: a flat dark panel when themed, otherwise two default boxes behind a plain area.</summary>
+    public static void BeginPanel(Rect area)
     {
-        Space(4f);
+        if (Theme.Ready && !Missing.Contains("BeginPanel"))
+        {
+            try
+            {
+                GUILayout.BeginArea(area, Theme.Panel!);
+                OpenGroups.Push(('A', true));
+                return;
+            }
+            catch (Exception exception) when (IsUnavailable(exception)) { MarkMissing("BeginPanel", exception); }
+        }
+        Run("Box", () => { GUI.Box(area, string.Empty); GUI.Box(area, string.Empty); });
+        BeginArea(new Rect(area.x + 12f, area.y + 10f, area.width - 24f, area.height - 20f));
+    }
+
+    public static void EndPanel() => EndArea();
+
+    /// <summary>A grouped block of rows: a flat lighter card when themed, otherwise a rule above a plain group.</summary>
+    public static void BeginCard()
+    {
+        Space(2f);
+        if (Theme.Ready && !Missing.Contains("BeginCard"))
+        {
+            try
+            {
+                GUILayout.BeginVertical(Theme.Card!, None);
+                OpenGroups.Push(('V', true));
+                return;
+            }
+            catch (Exception exception) when (IsUnavailable(exception)) { MarkMissing("BeginCard", exception); }
+        }
         Label("--------------------------------------------------------------", Rule);
         BeginVertical();
     }
+
+    public static void EndCard() => EndVertical();
 
     /// <summary>Closes every group still open. Call from a finally block around a whole frame.</summary>
     public static void Unwind()
@@ -158,19 +215,24 @@ internal static class Ui
     /// </summary>
     public static void Probe()
     {
-        BeginArea(new Rect(-2000f, -2000f, 10f, 10f));
+        Theme.EnsureInit();
+        BeginPanel(new Rect(-2000f, -2000f, 10f, 10f));
+        Title("probe");
         Label("probe");
         Button("probe");
+        Button("probe", true);
         Toggle(false, "probe");
         Slider(0f, 0f, 1f);
         Space(1f);
         Flex();
         BeginScroll(default);
-        BeginVertical();
+        BeginCard();
         BeginHorizontal();
         EndHorizontal();
+        EndCard();
+        BeginVertical();
         EndVertical();
         EndScroll();
-        EndArea();
+        EndPanel();
     }
 }

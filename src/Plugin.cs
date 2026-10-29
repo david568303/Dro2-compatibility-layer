@@ -12,7 +12,7 @@ namespace CarXModManager;
 public sealed class Plugin : BasePlugin
 {
     public const string PluginGuid = "carx.modmanager";
-    public const string PluginVersion = "0.1.2";
+    public const string PluginVersion = "0.2.0";
 
     internal static ManualLogSource Logger = null!;
     // A key name rather than ConfigEntry<Key>: the name is resolved against the game's real Key enum at runtime,
@@ -20,6 +20,7 @@ public sealed class Plugin : BasePlugin
     internal static ConfigEntry<string> ToggleKey = null!;
     internal static ConfigEntry<bool> OnlineSafeMode = null!;
     internal static ConfigEntry<float> UiScale = null!;
+    internal static ConfigEntry<bool> BlockGameMouse = null!;
     private OverlayBehaviour? _overlay;
 
     public override void Load()
@@ -29,6 +30,8 @@ public sealed class Plugin : BasePlugin
             "Opens and closes the mod manager overlay. A name from UnityEngine.InputSystem.Key, e.g. Delete, Insert, F10. Avoid Home: ReShade uses it for its own overlay.");
         OnlineSafeMode = Config.Bind("Safety", "OnlineSafeMode", true,
             "Flag mods that are not declared cosmetic (ModImpact attribute) so they can be kept out of online play. v0.1 only warns; it does not block yet.");
+        BlockGameMouse = Config.Bind("Overlay", "BlockGameMouse", true,
+            "While the overlay is open, stop the game from seeing the mouse (disables the Input System mouse device). Turn off if the menu stops responding to clicks.");
         UiScale = Config.Bind("Overlay", "UiScale", 1f,
             new ConfigDescription("Extra scale on top of the automatic 1080p-relative scaling.", new AcceptableValueRange<float>(0.5f, 2.5f)));
 

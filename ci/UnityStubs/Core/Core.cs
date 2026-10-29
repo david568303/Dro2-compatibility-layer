@@ -74,6 +74,22 @@ namespace UnityEngine
     {
         public Object(IntPtr pointer) : base(pointer) { }
         public static void Destroy(Object obj) { }
+        public HideFlags hideFlags { get; set; }
+    }
+
+    public enum HideFlags
+    {
+        None = 0, HideInHierarchy = 1, HideInInspector = 2, DontSaveInEditor = 4, NotEditable = 8,
+        DontSaveInBuild = 16, DontUnloadUnusedAsset = 32, DontSave = 52, HideAndDontSave = 61,
+    }
+
+    public class Texture : Object { public Texture(IntPtr pointer) : base(pointer) { } }
+
+    public class Texture2D : Texture
+    {
+        public Texture2D(int width, int height) : base(IntPtr.Zero) { }
+        public void SetPixel(int x, int y, Color color) { }
+        public void Apply() { }
     }
 
     public class Component : Object { public Component(IntPtr pointer) : base(pointer) { } }

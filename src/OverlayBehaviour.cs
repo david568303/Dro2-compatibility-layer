@@ -29,4 +29,5 @@ public sealed class OverlayBehaviour : MonoBehaviour
     }
 
     public void OnDestroy() => OverlayController.Shutdown();
+    public void OnApplicationQuit() => OverlayController.Shutdown();
 }

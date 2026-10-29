@@ -20,8 +20,16 @@ signature shows up as a `MissingMethodException` / `CARXMM_FAULT` line in `LogOu
 
 ## What milestone 1 does
 
-- Overlay opened with **Delete** (configurable; avoid Home, which ReShade uses). Drawn with Unity IMGUI inside
-  the engine, so it works on DX11 and DX12 alike and sits under ReShade instead of hooking `Present`.
+- Overlay opened with **Delete** by default. Change it in **Settings -> Change key** (press the key you want) or
+  in the config file; Settings shows both the Input System name and what your keyboard layout calls the key, since
+  e.g. the main Delete key (`Delete`) and the numpad's Del/Supr (`NumpadPeriod`) are different keys. Avoid Home,
+  which ReShade uses. Drawn with Unity IMGUI inside the engine, so it works on DX11 and DX12 alike and sits under
+  ReShade instead of hooking `Present`.
+- Flat, square, dark "mod menu" look (accent title bar, tab row, cards). If the game's build lacks the styling
+  calls it falls back to the plain default look and logs `CARXMM_THEME_UNAVAILABLE`.
+- The mouse is **captured** while the overlay is open: the game's Input System mouse device is disabled so clicks,
+  movement and scrolling no longer reach the game, and it is re-enabled on close. Turn it off with
+  `BlockGameMouse = false` in `BepInEx/config/carx.modmanager.cfg` if the menu stops responding to clicks.
 - **Mods** tab: every plugin BepInEx loaded, with GUID, version, dependencies and declared impact.
 - **Panels** tab: panels other mods register through `ModManagerApi.RegisterPanel`. A panel that throws three
   times is isolated instead of breaking the overlay.
@@ -31,8 +39,8 @@ signature shows up as a `MissingMethodException` / `CARXMM_FAULT` line in `LogOu
 - Frees the cursor while open and restores it on close.
 
 Not done yet: turning mods on/off (needs a preloader patcher that runs before the chainloader), blocking mods
-online (the flag only warns; there is no reliable "am I online" signal yet), and blocking game input while the
-overlay is open (the game still sees keyboard and gamepad input).
+online (the flag only warns; there is no reliable "am I online" signal yet), and blocking keyboard and gamepad
+input to the game while the overlay is open (only the mouse is captured).
 
 ## Build
 
