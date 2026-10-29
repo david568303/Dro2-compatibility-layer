@@ -130,7 +130,11 @@ internal static class OverlayController
         Matrix4x4 previous = GUI.matrix;
         GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
         try { DrawWindow(Screen.width / scale, Screen.height / scale); }
-        finally { GUI.matrix = previous; }
+        finally
+        {
+            Ui.Unwind(); // an exception mid-frame must not leave IMGUI groups open
+            GUI.matrix = previous;
+        }
     }
 
     private static void DrawWindow(float width, float height)
@@ -141,7 +145,7 @@ internal static class OverlayController
         GUI.Box(window, string.Empty);
         GUI.Box(window, string.Empty); // second pass so the text behind stays readable
 
-        GUILayout.BeginArea(new Rect(window.x + 12f, window.y + 10f, window.width - 24f, window.height - 20f));
+        Ui.BeginArea(new Rect(window.x + 12f, window.y + 10f, window.width - 24f, window.height - 20f));
         Ui.Label($"CarX Mod Manager v{Plugin.PluginVersion}   |   {Plugin.ToggleKey.Value} closes", Dim);
 
         Ui.BeginHorizontal();
@@ -158,7 +162,7 @@ internal static class OverlayController
             case 3: DrawLog(); break;
             default: DrawSettings(); break;
         }
-        GUILayout.EndArea();
+        Ui.EndArea();
     }
 
     private static void DrawMods()

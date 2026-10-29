@@ -21,7 +21,6 @@ namespace UnityEngine
         public static Vector2 BeginScrollView(Vector2 scrollPosition, Il2CppReferenceArray<GUILayoutOption> options) => scrollPosition;
         public static void EndScrollView() { }
         public static void BeginVertical(Il2CppReferenceArray<GUILayoutOption> options) { }
-        public static void BeginVertical(string style, Il2CppReferenceArray<GUILayoutOption> options) { }
         public static void EndVertical() { }
         public static void BeginHorizontal(Il2CppReferenceArray<GUILayoutOption> options) { }
         public static void EndHorizontal() { }
