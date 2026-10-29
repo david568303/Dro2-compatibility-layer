@@ -10,6 +10,41 @@ namespace CarXModManager.Api;
 /// </summary>
 public static class TextureTools
 {
+    /// <summary>
+    /// Makes a readable copy of any texture, including ones with Read/Write disabled (the usual case for textures the
+    /// game loads itself), by drawing it into a temporary render target on the GPU and reading that back. The copy is
+    /// a new Texture2D owned by the caller (destroy it when done). Call on the main thread.
+    /// </summary>
+    public static bool TryCopyToReadable(Texture2D source, out Texture2D? copy, out string? problem)
+    {
+        copy = null;
+        problem = null;
+        RenderTexture? previous = RenderTexture.active;
+        RenderTexture? target = null;
+        try
+        {
+            int width = source.width, height = source.height;
+            target = RenderTexture.GetTemporary(width, height, 0);
+            Graphics.Blit(source, target);
+            RenderTexture.active = target;
+            var result = new Texture2D(width, height);
+            result.ReadPixels(new Rect(0f, 0f, width, height), 0, 0);
+            result.Apply();
+            copy = result;
+            return true;
+        }
+        catch (Exception exception)
+        {
+            problem = $"{exception.GetType().Name}: {exception.Message}";
+            return false;
+        }
+        finally
+        {
+            RenderTexture.active = previous!;
+            if (target != null) RenderTexture.ReleaseTemporary(target);
+        }
+    }
+
     /// <summary>Copies the texture's pixels out. Call on the main thread.</summary>
     public static bool TryRead(Texture2D texture, out byte[] rgba, out int width, out int height, out string? problem)
     {

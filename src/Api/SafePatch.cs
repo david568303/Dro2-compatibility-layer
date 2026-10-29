@@ -25,12 +25,10 @@ public static class SafePatch
     {
         try
         {
-            Type? type = AccessTools.TypeByName(typeName);
-            if (type == null)
-            {
-                try { Assembly.Load(assemblyName); } catch { /* reported below */ }
-                type = AccessTools.TypeByName(typeName);
-            }
+            Type? type = null;
+            try { type = Assembly.Load(assemblyName).GetType(typeName, throwOnError: false); }
+            catch { /* fall back to a search of every loaded assembly */ }
+            type ??= AccessTools.TypeByName(typeName);
             if (type == null)
             {
                 log.LogError($"PATCH_TARGET_MISSING — type {typeName} was not found in {assemblyName}. The game was probably updated.");

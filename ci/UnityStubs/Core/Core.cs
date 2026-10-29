@@ -58,6 +58,22 @@ namespace UnityEngine
         public Object(IntPtr pointer) : base(pointer) { }
         public static void Destroy(Object obj) { }
         public int GetInstanceID() => 0;
+        public string name { get; set; } = "";
+    }
+
+    public enum TextureFormat { RGBA32 = 4 }
+
+    public class RenderTexture : Texture
+    {
+        public RenderTexture(IntPtr pointer) : base(pointer) { }
+        public static RenderTexture active { get; set; } = null!;
+        public static RenderTexture GetTemporary(int width, int height, int depthBuffer) => null!;
+        public static void ReleaseTemporary(RenderTexture temp) { }
+    }
+
+    public static class Graphics
+    {
+        public static void Blit(Texture source, RenderTexture dest) { }
     }
 
     public struct Color32
@@ -77,6 +93,9 @@ namespace UnityEngine
     public class Texture2D : Texture
     {
         public Texture2D(IntPtr pointer) : base(pointer) { }
+        public Texture2D(int width, int height) : base(IntPtr.Zero) { }
+        public void ReadPixels(Rect source, int destX, int destY) { }
+        public TextureFormat format => default;
         public Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<Color32> GetPixels32() => null!;
         public void SetPixels32(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<Color32> colors) { }
         public void Apply() { }
