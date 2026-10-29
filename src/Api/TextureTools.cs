@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using UnityEngine;
 
@@ -62,14 +63,7 @@ public static class TextureTools
             height = texture.height;
             Il2CppStructArray<Color32> pixels = texture.GetPixels32();
             rgba = new byte[pixels.Length * 4];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                Color32 pixel = pixels[i];
-                rgba[i * 4] = pixel.r;
-                rgba[i * 4 + 1] = pixel.g;
-                rgba[i * 4 + 2] = pixel.b;
-                rgba[i * 4 + 3] = pixel.a;
-            }
+            MemoryMarshal.AsBytes(pixels.AsSpan()).CopyTo(rgba); // one block copy, not a call per pixel
             return true;
         }
         catch (Exception exception)
@@ -94,8 +88,7 @@ public static class TextureTools
                 return false;
             }
             var pixels = new Il2CppStructArray<Color32>(width * height);
-            for (int i = 0; i < width * height; i++)
-                pixels[i] = new Color32(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2], rgba[i * 4 + 3]);
+            rgba.AsSpan(0, width * height * 4).CopyTo(MemoryMarshal.AsBytes(pixels.AsSpan()));
             texture.SetPixels32(pixels);
             texture.Apply();
             return true;

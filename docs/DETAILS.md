@@ -34,6 +34,10 @@ here so each mod doesn't re-implement them:
   mod shows up in the status line as "with errors" and a game update that moves a method is visible at once.
 - `TextureTools.TryRead` / `TryWriteInPlace` copy the pixels of a readable `Texture2D` out as RGBA bytes and write
   processed pixels back (SetPixels32 + Apply), so the processing in between can be plain managed code.
+- `TextureReplacer` hands the game a processed version of a texture *before it first uses it*, so there is no frame
+  showing the original. Call `Replace(texture)` from a prefix on the game method that receives the texture and assign
+  the result back to the argument. Textures with Read/Write disabled are copied on the GPU first (the original is
+  left alone); results are cached per texture and old copies are destroyed, so reopening previews does not leak.
 - `MainThread.Post(name, work)` runs work on Unity's main thread from any thread, so heavy processing can run in the
   background and only the Unity-facing part runs on the main thread.
 
