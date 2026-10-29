@@ -12,7 +12,22 @@ namespace CarXModManager;
 public sealed class Plugin : BasePlugin
 {
     public const string PluginGuid = "carx.modmanager";
-    public const string PluginVersion = "0.2.0";
+    public const string PluginVersion = "0.1.0";
+
+    /// <summary>Short commit hash of the build ("local" for a build made outside CI). Versions are not bumped for dev builds.</summary>
+    public static readonly string BuildId = ReadBuildId();
+
+    private static string ReadBuildId()
+    {
+        string? info = typeof(Plugin).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion;
+        int plus = info?.IndexOf('+') ?? -1;
+        return info != null && plus >= 0 && info.Length > plus + 1
+            ? info.Substring(plus + 1, Math.Min(7, info.Length - plus - 1))
+            : "local";
+    }
 
     internal static ManualLogSource Logger = null!;
     // A key name rather than ConfigEntry<Key>: the name is resolved against the game's real Key enum at runtime,
@@ -40,7 +55,7 @@ public sealed class Plugin : BasePlugin
             Log.LogWarning("CARXMM_KEY_WARNING — Home is ReShade's default overlay key; pick another ToggleKey in carx.modmanager.cfg.");
 
         _overlay = AddComponent<OverlayBehaviour>();
-        Log.LogInfo($"CARXMM_LOADED — v{PluginVersion}, API v{ModManagerApi.ApiVersion}; press {ToggleKey.Value} to open the overlay.");
+        Log.LogInfo($"CARXMM_LOADED — v{PluginVersion} ({BuildId}), API v{ModManagerApi.ApiVersion}; press {ToggleKey.Value} to open the overlay.");
     }
 
     public override bool Unload()

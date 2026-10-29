@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>CarXModManager</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.1.0</Version>
     <RootNamespace>CarXModManager</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

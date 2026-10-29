@@ -242,7 +242,7 @@ internal static class OverlayController
         float h = Mathf.Min(620f, height - 40f);
         Ui.BeginPanel(new Rect((width - w) / 2f, (height - h) / 2f, w, h));
 
-        Ui.Title($"CARX MOD MANAGER   v{Plugin.PluginVersion}");
+        Ui.Title($"CARX MOD MANAGER   dev build {Plugin.BuildId}");
         Ui.BeginHorizontal();
         for (int i = 0; i < TabNames.Length; i++)
             if (Ui.Button(TabNames[i], i == _tab)) _tab = i;
@@ -391,7 +391,7 @@ internal static class OverlayController
         Ui.Label("About");
         Ui.Label($"Graphics API: {SystemInfo.graphicsDeviceType}", Dim);
         Ui.Label($"Unity {Application.unityVersion}   game {Application.version}", Dim);
-        Ui.Label($"Manager v{Plugin.PluginVersion}   mod API v{ModManagerApi.ApiVersion}", Dim);
+        Ui.Label($"Dev build {Plugin.BuildId}   mod API v{ModManagerApi.ApiVersion}", Dim);
         Ui.Label($"IMGUI primitives unavailable in this build: {Ui.MissingSummary}", Dim);
         Ui.Label($"Theme: {(Theme.Ready ? "flat" : "plain (styling unavailable)")}", Dim);
         Ui.EndCard();

@@ -30,6 +30,7 @@ jobs:
         run: >
           dotnet build CarXModManager.csproj -c Release -o out
           -p:UseBepInExPackages=true
+          -p:SourceRevisionId="$GITHUB_SHA"
           -p:GameInteropDirectory="$GITHUB_WORKSPACE/ci/stubs-out"
 
       - name: Package
