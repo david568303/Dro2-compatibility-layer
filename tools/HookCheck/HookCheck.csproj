@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Checks the integrations' hooks against the game's real assemblies. Needs the interop folder, so it is a local tool, not part of CI. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);NU1603;NU1701</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Brings Il2CppInterop.Runtime, BepInEx and Harmony next to the tool so the plugin DLL can be loaded for reflection. -->
+    <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.791" />
+  </ItemGroup>
+</Project>

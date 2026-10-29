@@ -12,8 +12,8 @@
     <!-- CarXModManager.xml next to the DLL gives other mods' authors IntelliSense for the public API. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);NU1603</NoWarn>
-    <!-- ci/ holds the CI-only Unity stand-ins; out/ is build output. Neither belongs in the plugin. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);ci/**;out/**</DefaultItemExcludes>
+    <!-- ci/ holds the CI-only game stand-ins, tests/ and tools/ the logic tests and developer tools, out/ is build output. None belongs in the plugin. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);ci/**;tests/**;tools/**;out/**</DefaultItemExcludes>
     <GameDirectory Condition="'$(GameDirectory)' == ''">D:/SteamLibrary/steamapps/common/CarX Drift Racing Online 2</GameDirectory>
     <GameInteropDirectory Condition="'$(GameInteropDirectory)' == ''">$(GameDirectory)/BepInEx/interop</GameInteropDirectory>
     <BepInExCoreDirectory Condition="'$(BepInExCoreDirectory)' == ''">$(GameDirectory)/BepInEx/core</BepInExCoreDirectory>

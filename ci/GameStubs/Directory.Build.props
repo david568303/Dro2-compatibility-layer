@@ -11,7 +11,7 @@
     <Version>0.0.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <NoWarn>$(NoWarn);NU1603;CS8618;CS0649;CS0169</NoWarn>
+    <NoWarn>$(NoWarn);NU1603;CS8618;CS0649;CS0169;CS0108;CS0114;CS0660;CS0661;CS8981</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.791" PrivateAssets="all" />

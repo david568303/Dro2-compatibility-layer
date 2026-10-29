@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>CarX.DR3.Assembly</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Binding/Binding.csproj" />
+    <ProjectReference Include="../CarX.Common.Base/CarX.Common.Base.csproj" />
+    <ProjectReference Include="../Il2Cppmscorlib/Il2Cppmscorlib.csproj" />
+    <ProjectReference Include="../UnityEngine.CoreModule/UnityEngine.CoreModule.csproj" />
+  </ItemGroup>
+</Project>

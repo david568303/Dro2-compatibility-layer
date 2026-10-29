@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Generates the compile-time stand-ins that CI builds against.
+    Input: the plugin DLL built against the game's REAL interop assemblies, and that interop folder.
+    It lists every game type and member the plugin references and writes a minimal C# stand-in for each one, with the
+    real assembly names and signatures. The stand-ins hold no game code or data and are never shipped.
+    Local tool (it needs the game's interop folder), not part of CI.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);NU1603;NU1701</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.0.0" />
+    <!-- Brings Il2CppInterop.Runtime, BepInEx and Harmony next to the tool, so types from them can be resolved. -->
+    <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.791" />
+  </ItemGroup>
+</Project>

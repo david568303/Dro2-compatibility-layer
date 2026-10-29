@@ -2,13 +2,16 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
+using CarXModManager.Integrations;
+using CarXModManager.Overlay;
 using Object = UnityEngine.Object;
 
 namespace CarXModManager;
 
 /// <summary>
-/// The compatibility layer's BepInEx plugin. It shows the always-on status line ("N mods loaded") and carries the
-/// shared API other mods build on (<see cref="Api.GameHooks"/>).
+/// The compatibility layer's BepInEx plugin. It shows the always-on status line ("N mods loaded"), carries the
+/// shared API other mods build on (<see cref="Api.GameHooks"/>), and adds integrations with the game's own screens
+/// (a better server browser and map picker, see <see cref="IntegrationHost"/>).
 /// A mod that uses the API declares <c>[BepInDependency(CarXModManager.Plugin.PluginGuid)]</c> so BepInEx loads this
 /// plugin first. See docs/API.md in the repository.
 /// </summary>
@@ -55,8 +58,9 @@ public sealed class Plugin : BasePlugin
     internal static ConfigEntry<bool> ShowStatusLine = null!;
 
     private StatusLineBehaviour? _statusLine;
+    private OverlayBehaviour? _overlay;
 
-    /// <summary>Called by BepInEx at startup: binds the setting, starts watching the log and adds the drawing component.</summary>
+    /// <summary>Called by BepInEx at startup: binds the settings, starts watching the log, adds the status line and installs the integrations.</summary>
     public override void Load()
     {
         LogSource = Log;
@@ -66,11 +70,35 @@ public sealed class Plugin : BasePlugin
         ModStatusTracker.StartListening();
         _statusLine = AddComponent<StatusLineBehaviour>();
         Log.LogInfo($"COMPATLAYER_LOADED — dev build {BuildId}.");
+        _overlay = InstallIntegrations();
     }
 
-    /// <summary>Called by BepInEx when the plugin is unloaded: removes the drawing component.</summary>
+    /// <summary>
+    /// Installs the integrations with the game's screens and, if any needs panels, adds the component that draws them.
+    /// Whatever goes wrong here is logged and contained: the status line and the shared API above are already running.
+    /// </summary>
+    private OverlayBehaviour? InstallIntegrations()
+    {
+        try
+        {
+            return IntegrationHost.Install(Config, Log) ? AddComponent<OverlayBehaviour>() : null;
+        }
+        catch (Exception exception)
+        {
+            Log.LogError($"INTEGRATIONS_FAILED — the integrations could not be installed; the status line and the shared API are unaffected. {exception}");
+            return null;
+        }
+    }
+
+    /// <summary>Called by BepInEx when the plugin is unloaded: removes the drawing components.</summary>
     public override bool Unload()
     {
+        if (_overlay != null)
+        {
+            OverlayHost.Shutdown();
+            Object.Destroy(_overlay);
+            _overlay = null;
+        }
         if (_statusLine != null)
         {
             Object.Destroy(_statusLine);
