@@ -22,6 +22,44 @@ namespace CarX.Game.DR3Console.Contexts.Common.Abstract
     }
 }
 
+namespace CarX.Game.DR3Console.Contexts.UI
+{
+    public class MenuItem : global::UnityEngine.MonoBehaviour
+    {
+        public MenuItem(System.IntPtr pointer) : base(pointer) { }
+        public global::CarX.Game.DR3Console.Contexts.UI.MenuItemType Type { get { throw null!; } set { throw null!; } }
+    }
+    public enum MenuItemType : int
+    {
+        Play = 0,
+        TestDrive = 1,
+        Workshop = 2,
+        Store = 3,
+        Garage = 4,
+        Settings = 5,
+        Info = 6,
+        Credits = 7,
+        Quit = 8,
+        OnlineMenu = 9,
+        Discord = 10,
+        Mods = 11,
+    }
+    public class UIMainMenuContext : global::CarX.Game.DR3Console.BaseContext
+    {
+        public UIMainMenuContext(System.IntPtr pointer) : base(pointer) { }
+        public global::UnityEngine.UI.Button m_playButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_testDriveButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_workshopButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_storeButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_garageButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_settingsButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_infoButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_creditsButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_modsButton { get { throw null!; } set { throw null!; } }
+        public global::UnityEngine.UI.Button m_quitButton { get { throw null!; } set { throw null!; } }
+    }
+}
+
 namespace CarX.Game.DR3Console.DR3.Scripts.Base
 {
     public class UIBaseContext : global::CarX.Game.DR3Console.BaseContext

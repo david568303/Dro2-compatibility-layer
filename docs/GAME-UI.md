@@ -28,6 +28,16 @@ screens. They describe structure, not looks: the layout and styling live in Unit
 | Filters screen | `UILobbyRoomFiltersContext`, `LobbyRoomsFilterModel` | server-side: per-track toggles and a room-name filter, on a separate screen with pages |
 | Data | `LobbyRoomCommandsModel.GetRoomsAsync(filters, sorting, offset, limit)` | paged; server-side sort only by ping, players, track (`SortHeader`) |
 
+## Main menu
+
+- `UIMainMenuContext` (a `BaseContext`; it has no `OnActivated` of its own) holds one `Button` field per entry: `m_playButton`,
+  `m_testDriveButton`, `m_workshopButton`, `m_storeButton`, `m_garageButton`, `m_settingsButton`, `m_infoButton`,
+  `m_creditsButton`, `m_modsButton`, `m_quitButton`. The server browser (`OnlineMenu`) and Discord entries have no field; every entry
+  carries a `MenuItem` component whose `Type` is a `MenuItemType` (Play, TestDrive, Workshop, Store, Garage, Settings, Info, Credits,
+  Quit, OnlineMenu, Discord, Mods). The controller (`UIMainMenuContextController<T>`) reacts to `menuButtonPressedEvent(MenuItem)`.
+- Pressing Play opens the game modes screen (`UIRaceGameModesContext`, one `UIRaceGameModeButton` per mode: career, free ride, XDS
+  training, duels, the multiplayer lobby = server browser, multiplayer duels, top 32 variants). *Not touched by the mod manager.*
+
 ## Map selection
 
 - **Global map** (`UIGlobalMapMarkersContext`, `UIGlobalMapNavigationController<T>`): regions are tabs (`m_regionsTabs`); each

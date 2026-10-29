@@ -42,6 +42,15 @@ namespace UnityEngine.UI
         public global::System.Boolean raycastTarget { get { throw null!; } set { throw null!; } }
         public global::UnityEngine.RectTransform rectTransform { get { throw null!; } }
     }
+    public class HorizontalLayoutGroup : global::UnityEngine.UI.HorizontalOrVerticalLayoutGroup
+    {
+        public HorizontalLayoutGroup(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class HorizontalOrVerticalLayoutGroup : global::UnityEngine.UI.LayoutGroup
+    {
+        public HorizontalOrVerticalLayoutGroup(System.IntPtr pointer) : base(pointer) { }
+        public global::System.Single spacing { get { throw null!; } set { throw null!; } }
+    }
     public class Image : global::UnityEngine.UI.MaskableGraphic
     {
         public enum Type : int
@@ -63,6 +72,11 @@ namespace UnityEngine.UI
     public class LayoutGroup : global::UnityEngine.EventSystems.UIBehaviour
     {
         public LayoutGroup(System.IntPtr pointer) : base(pointer) { }
+    }
+    public class LayoutRebuilder : global::Il2CppSystem.Object
+    {
+        public LayoutRebuilder(System.IntPtr pointer) : base(pointer) { }
+        public static void ForceRebuildLayoutImmediate(global::UnityEngine.RectTransform layoutRoot) { throw null!; }
     }
     public class Mask : global::UnityEngine.EventSystems.UIBehaviour
     {

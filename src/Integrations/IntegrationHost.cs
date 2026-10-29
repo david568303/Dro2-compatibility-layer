@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
+using CarXModManager.Integrations.MainMenu;
 using CarXModManager.Integrations.ServerBrowser;
 using CarXModManager.Integrations.TrackPicker;
 using CarXModManager.Ui;
@@ -8,7 +9,7 @@ using HarmonyLib;
 namespace CarXModManager.Integrations;
 
 /// <summary>
-/// Installs the mod manager's integrations with the game's own screens (the server browser, the map picker) and runs them. Each one is
+/// Installs the mod manager's integrations with the game's own screens (the server browser, the map picker, the main menu) and runs them. Each one is
 /// independent, has its own config section with an <c>Enabled</c> switch, and fails on its own: a hook that cannot be created,
 /// a game type that no longer exists, a screen that does not have the structure the integration expects, or an error while running
 /// is logged and leaves the game's screen alone, and the other integrations are not affected.
@@ -27,6 +28,7 @@ internal static class IntegrationHost
     {
         ("ServerBrowser", () => new ServerBrowserIntegration()),
         ("TrackPicker", () => new TrackPickerIntegration()),
+        ("MainMenu", () => new MainMenuIntegration()),
     };
 
     private static readonly List<IIntegration> Running = new();

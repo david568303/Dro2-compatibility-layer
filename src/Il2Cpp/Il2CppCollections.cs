@@ -42,6 +42,33 @@ internal static class Il2CppCollections
     }
 
     /// <summary>
+    /// Copies the elements of <paramref name="source"/> into <paramref name="into"/>, in order, if it is exactly a game array
+    /// <c>TItem[]</c> (the game passes an empty array while the first page of rooms is still loading). Elements that are
+    /// <c>null</c> are skipped. Never throws: if the interop cannot treat the object as an array, the result is <c>false</c>.
+    /// </summary>
+    /// <returns><c>true</c> if <paramref name="source"/> is a <c>TItem[]</c> and was copied; <c>false</c> otherwise (<paramref name="into"/> is unchanged).</returns>
+    public static bool TryCopyArray<TItem, TBase>(Il2CppObjectBase source, List<TBase> into) where TItem : Il2CppObjectBase, TBase
+    {
+        try
+        {
+            var array = source.TryCast<Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<TItem>>();
+            if (array == null) return false;
+            var copy = new List<TBase>(array.Length);
+            for (int i = 0; i < array.Length; i++)
+            {
+                TItem? item = array[i];
+                if (item != null) copy.Add(item);
+            }
+            into.AddRange(copy);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// The game's name for the type of an object, for the log: for a list of rooms it reads like
     /// <c>System.Collections.Generic.List`1[SomeNamespace.SomeRoomType]</c>. Never throws.
     /// </summary>

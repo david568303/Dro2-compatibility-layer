@@ -225,13 +225,14 @@ internal sealed class ServerBrowserIntegration : IIntegration
     }
 
     /// <summary>
-    /// Copies the rooms out of the game's list. The game builds it as a list of rooms or of the general list-element type
-    /// (the first is a list of the second's subtype), so both are tried. False if it is some other kind of collection.
+    /// Copies the rooms out of what the game passes: a list of rooms, a list of the general list-element type, or (while the first
+    /// page is still loading) an empty array of rooms. False if it is some other kind of collection.
     /// </summary>
     private bool TryReadRooms(Il2CppRooms source, List<ListElementData> rooms)
     {
         bool read = Il2CppCollections.TryCopyList<LobbyRoomPreviewData, ListElementData>(source, rooms)
-                    || Il2CppCollections.TryCopyList<ListElementData, ListElementData>(source, rooms);
+                    || Il2CppCollections.TryCopyList<ListElementData, ListElementData>(source, rooms)
+                    || Il2CppCollections.TryCopyArray<LobbyRoomPreviewData, ListElementData>(source, rooms);
         if (read && !_listKindLogged)
         {
             _listKindLogged = true;

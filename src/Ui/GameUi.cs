@@ -219,7 +219,8 @@ internal static class GameUi
 
     /// <summary>
     /// Positions <paramref name="rect"/> (a child of <paramref name="parent"/>) over <paramref name="box"/>, which is given in
-    /// the coordinates of <paramref name="space"/>.
+    /// the coordinates of <paramref name="space"/>. The object ends up with a centre anchor and pivot, whatever it had before (a
+    /// <see cref="RectMemory"/> taken beforehand puts that back).
     /// </summary>
     public static void PlaceOver(RectTransform rect, RectTransform parent, RectTransform space, Box box)
     {
@@ -227,9 +228,12 @@ internal static class GameUi
         Vector3 b = parent.InverseTransformPoint(space.TransformPoint(new Vector3(box.Right, box.Top, 0f)));
         float width = Math.Abs(b.x - a.x), height = Math.Abs(b.y - a.y);
         Rect parentRect = parent.rect;
+        // the object's own scale multiplies its size, so the size to set is the wanted size divided by it
+        Vector3 scale = rect.localScale;
+        float scaleX = Math.Abs(scale.x) > 0.0001f ? Math.Abs(scale.x) : 1f, scaleY = Math.Abs(scale.y) > 0.0001f ? Math.Abs(scale.y) : 1f;
         rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(width, height);
+        rect.sizeDelta = new Vector2(width / scaleX, height / scaleY);
         rect.anchoredPosition = new Vector2(Math.Min(a.x, b.x) + width / 2f - parentRect.center.x, Math.Min(a.y, b.y) + height / 2f - parentRect.center.y);
     }
 

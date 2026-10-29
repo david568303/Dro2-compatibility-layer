@@ -54,6 +54,12 @@ namespace UnityEngine
         public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponents<T>() { throw null!; }
         public void GetComponents(global::Il2CppSystem.Type type, global::Il2CppSystem.Collections.Generic.List<global::UnityEngine.Component> results) { throw null!; }
         public void GetComponents<T>(global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInChildren(global::Il2CppSystem.Type type) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInChildren(global::Il2CppSystem.Type type, global::System.Boolean includeInactive) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponentsInChildren<T>(global::System.Boolean includeInactive) { throw null!; }
+        public void GetComponentsInChildren<T>(global::System.Boolean includeInactive, global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
+        public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> GetComponentsInChildren<T>() { throw null!; }
+        public void GetComponentsInChildren<T>(global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
         public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInParent(global::Il2CppSystem.Type type) { throw null!; }
         public global::Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<global::UnityEngine.Component> GetComponentsInParent(global::Il2CppSystem.Type type, global::System.Boolean includeInactive) { throw null!; }
         public void GetComponentsInParent<T>(global::System.Boolean includeInactive, global::Il2CppSystem.Collections.Generic.List<T> results) { throw null!; }
@@ -529,6 +535,8 @@ namespace UnityEngine
         public global::UnityEngine.Vector3 InverseTransformPoint(global::UnityEngine.Vector3 position) { throw null!; }
         public global::UnityEngine.Vector3 InverseTransformPoint(global::System.Single x, global::System.Single y, global::System.Single z) { throw null!; }
         public void SetAsLastSibling() { throw null!; }
+        public void SetSiblingIndex(global::System.Int32 index) { throw null!; }
+        public global::System.Int32 GetSiblingIndex() { throw null!; }
         public global::UnityEngine.Transform Find(global::System.String n) { throw null!; }
         public global::UnityEngine.Transform GetChild(global::System.Int32 index) { throw null!; }
     }
