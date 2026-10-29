@@ -18,8 +18,6 @@ namespace UnityEngine
         public Color(float r, float g, float b, float a) { this.r = r; this.g = g; this.b = b; this.a = a; }
     }
 
-    public struct Vector2 { public float x, y; }
-
     public struct Vector3
     {
         public float x, y, z;
@@ -36,21 +34,6 @@ namespace UnityEngine
     public struct Matrix4x4
     {
         public static Matrix4x4 TRS(Vector3 pos, Quaternion q, Vector3 s) => default;
-    }
-
-    public static class Mathf
-    {
-        public static float Max(float a, float b) => a > b ? a : b;
-        public static float Min(float a, float b) => a < b ? a : b;
-        public static bool Approximately(float a, float b) => a == b;
-    }
-
-    public enum CursorLockMode { None = 0, Locked = 1, Confined = 2 }
-
-    public static class Cursor
-    {
-        public static CursorLockMode lockState { get; set; }
-        public static bool visible { get; set; }
     }
 
     public static class Screen
@@ -74,22 +57,6 @@ namespace UnityEngine
     {
         public Object(IntPtr pointer) : base(pointer) { }
         public static void Destroy(Object obj) { }
-        public HideFlags hideFlags { get; set; }
-    }
-
-    public enum HideFlags
-    {
-        None = 0, HideInHierarchy = 1, HideInInspector = 2, DontSaveInEditor = 4, NotEditable = 8,
-        DontSaveInBuild = 16, DontUnloadUnusedAsset = 32, DontSave = 52, HideAndDontSave = 61,
-    }
-
-    public class Texture : Object { public Texture(IntPtr pointer) : base(pointer) { } }
-
-    public class Texture2D : Texture
-    {
-        public Texture2D(int width, int height) : base(IntPtr.Zero) { }
-        public void SetPixel(int x, int y, Color color) { }
-        public void Apply() { }
     }
 
     public class Component : Object { public Component(IntPtr pointer) : base(pointer) { } }

@@ -22,7 +22,7 @@ jobs:
       # assembly names and member shapes. The resulting DLL binds to the real ones inside the game.
       - name: Build Unity stand-ins
         run: |
-          for p in Core/UnityEngine.CoreModule Imgui/UnityEngine.IMGUIModule Input/Unity.InputSystem; do
+          for p in Core/UnityEngine.CoreModule Imgui/UnityEngine.IMGUIModule; do
             dotnet build "ci/UnityStubs/$p.csproj" -c Release -o ci/stubs-out
           done
 
@@ -52,4 +52,4 @@ jobs:
           gh release create latest CarXModManager.zip \
             --target "$GITHUB_SHA" --prerelease \
             --title "CarX Mod Manager (CI build, not yet tested in-game)" \
-            --notes "Built from $GITHUB_SHA against stand-in Unity assemblies, so the Unity-facing calls are unverified until it runs in the game. Extract CarXModManager.zip into the game folder (it contains BepInEx/plugins/CarXModManager/CarXModManager.dll), launch, press Delete, and check BepInEx/LogOutput.log for CARXMM_LOADED and CARXMM_ONGUI_FIRED."
+            --notes "Dev build from $GITHUB_SHA, compiled against stand-in Unity assemblies, so the Unity-facing calls are unverified until it runs in the game. Extract CarXModManager.zip into the game folder (it contains BepInEx/plugins/CarXModManager/CarXModManager.dll), launch, and look at the bottom-left corner of the screen. BepInEx/LogOutput.log should contain CARXMM_LOADED and CARXMM_ONGUI_FIRED."
