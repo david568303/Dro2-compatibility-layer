@@ -28,14 +28,14 @@ instead of hooking `Present`.
 Other mods reference `CarXModManager.dll` and declare `[BepInDependency("carx.modmanager")]`. Game-wide helpers live
 here so each mod doesn't re-implement them:
 
-- `SafePatch.TryPatch(harmony, log, typeName, assemblyName, methodName, parameterCheck, prefix, postfix)` patches a
-  game method found by name at run time (no compile-time dependency on the game's types). Every failure (type
-  renamed, method changed, patch refused) is logged as an **Error under the calling mod's own log source**, so the
+- `GameHooks.Create(harmony, log, typeName, assemblyName, methodName, parameterCheck, prefix, postfix)` creates a
+  hook on a game method found by name at run time (no compile-time dependency on the game's types). Every failure (type
+  renamed, method changed, hook refused) is logged as an **Error under the calling mod's own log source**, so the
   mod shows up in the status line as "with errors" and a game update that moves a method is visible at once.
 
-  A prefix patched this way runs synchronously, before the game uses the arguments, so a mod can swap an argument
+  A prefix hooked this way runs synchronously, before the game uses the arguments, so a mod can swap an argument
   (for example a texture) with no frame in which the original shows. The type is looked up in the named interop
-  assembly first, so a patch is applied as soon as the plugin loads rather than after the game has used the method.
+  assembly first, so a hook is created as soon as the plugin loads rather than after the game has used the method.
 
 ## Download
 
